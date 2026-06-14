@@ -1,3 +1,4 @@
+const mongoose=require("mongoose");
 const businessSchema = new mongoose.Schema(
     {
         businessName: {
@@ -69,3 +70,5 @@ const businessSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+
+module.exports=mongoose.model("business",businessSchema);
