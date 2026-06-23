@@ -2,7 +2,7 @@ const express = require("express");
 
 const router = express.Router();
 
-const { generateToken,getQueuePosition,callNextToken,markTokenServed,markNoShow } = require("../controllers/queue.controller");
+const { generateToken,getQueuePosition,callNextToken,markTokenServed,markNoShow,getCurrentQueue } = require("../controllers/queue.controller");
 const protect = require("../middlewares/auth.middleware");
 const authorizeRoles = require("../middlewares/role.middleware");
 
@@ -18,6 +18,12 @@ router.get(
   protect,
   authorizeRoles("customer", "admin","owner"),
   getQueuePosition
+);
+router.get(
+  "/current/:businessId/:serviceId",
+  protect,
+  authorizeRoles("staff", "owner", "admin"),
+  getCurrentQueue
 );
 
 router.post(
