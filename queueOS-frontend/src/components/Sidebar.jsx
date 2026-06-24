@@ -21,6 +21,7 @@ const NAV = {
     { to: '/owner/businesses', icon: Building2, label: 'My Businesses' },
     { to: '/owner/businesses/create', icon: PlusCircle, label: 'Create Business' },
     { to: '/owner/services', icon: Briefcase, label: 'Services' },
+    { to: '/owner/staff', icon: Users, label: 'Manage Staff' },
     { to: '/owner/analytics', icon: BarChart3, label: 'Analytics' },
     { to: '/owner/ai-predictions', icon: BrainCircuit, label: 'AI Predictions' },
   ],
@@ -62,74 +63,71 @@ export default function Sidebar({ open, onClose }) {
 
   return (
     <>
-      {/* Overlay for mobile */}
       {open && (
-        <div
-          className="fixed inset-0 bg-black/40 z-20 lg:hidden"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-slate-950/50 z-20 lg:hidden" onClick={onClose} />
       )}
 
       <aside
-        className={`
-          fixed lg:static inset-y-0 left-0 z-30
-          w-64 bg-gradient-to-b ${gradientClass}
-          transform transition-transform duration-300 ease-in-out
-          ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          flex flex-col
-        `}
+        className={`fixed lg:static inset-y-0 left-0 z-30 w-72 bg-slate-950/95 border-r border-white/10 backdrop-blur-xl transform transition-transform duration-300 ease-in-out ${
+          open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-sm font-black text-primary-600">Q</span>
+        <div className="relative h-full flex flex-col overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 opacity-90" />
+          <div className="relative z-10 flex items-center justify-between gap-3 px-6 py-5 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-3xl bg-white/10 text-white shadow-lg shadow-slate-950/20">
+                <span className="text-lg font-black">Q</span>
+              </div>
+              <div>
+                <p className="text-white text-base font-semibold">QueueOS</p>
+                <p className="text-white/60 text-xs mt-1">{ROLE_LABELS[user.role]}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-white font-bold text-sm leading-none">QueueOS</p>
-              <p className="text-white/60 text-xs mt-0.5">{ROLE_LABELS[user.role]}</p>
+            <button onClick={onClose} className="lg:hidden text-white/70 hover:text-white">
+              <X size={20} />
+            </button>
+          </div>
+
+          <nav className="relative z-10 flex-1 overflow-y-auto px-4 py-5 space-y-1">
+            {navItems.map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `group flex items-center gap-3 rounded-3xl px-4 py-3 text-sm font-medium transition ${
+                    isActive
+                      ? 'bg-white/15 text-white shadow-[0_10px_30px_-15px_rgba(255,255,255,0.25)]'
+                      : 'text-slate-200 hover:bg-white/10 hover:text-white'
+                  }`
+                }
+              >
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-slate-200 group-hover:bg-white/20 group-hover:text-white">
+                  <Icon size={18} />
+                </span>
+                <span>{label}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="relative z-10 border-t border-white/10 px-5 py-5 bg-slate-950/95">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-3xl bg-white/10 flex items-center justify-center text-white text-base font-bold">
+                  {user.name?.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{user.name}</p>
+                  <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2 text-xs text-slate-400">
+                <p>Role: <span className="font-semibold text-white capitalize">{user.role}</span></p>
+                <p className="truncate">Ready for your next queue action.</p>
+              </div>
             </div>
           </div>
-          <button onClick={onClose} className="lg:hidden text-white/70 hover:text-white">
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'bg-white/20 text-white shadow-sm'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
-                }`
-              }
-            >
-              <Icon size={18} />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-
-        {/* User Info */}
-        <div className="p-4 border-t border-white/10">
-          <NavLink
-            to="/profile"
-            className="flex items-center gap-3 px-3 py-2 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all duration-200"
-          >
-            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-              <User size={16} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{user.name}</p>
-              <p className="text-white/50 text-xs truncate">{user.email}</p>
-            </div>
-          </NavLink>
         </div>
       </aside>
     </>

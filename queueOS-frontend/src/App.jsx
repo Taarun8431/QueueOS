@@ -24,6 +24,7 @@ import BusinessDetails from './pages/owner/BusinessDetails'
 import Services from './pages/owner/Services'
 import Analytics from './pages/owner/Analytics'
 import AIPredictions from './pages/owner/AIPredictions'
+import ManageStaff from './pages/owner/ManageStaff'
 
 // Staff Pages
 import StaffDashboard from './pages/staff/Dashboard'
@@ -37,6 +38,7 @@ import AdminDashboard from './pages/admin/Dashboard'
 import ManageBusinesses from './pages/admin/ManageBusinesses'
 import ManageUsers from './pages/admin/ManageUsers'
 import PlatformAnalytics from './pages/admin/PlatformAnalytics'
+import CreateUser from './pages/admin/CreateUser'
 
 // Layouts
 import AuthLayout from './layouts/AuthLayout'
@@ -83,6 +85,7 @@ export default function App() {
             <Route path="/owner/businesses/:id/edit" element={<EditBusiness />} />
             <Route path="/owner/businesses/:id" element={<BusinessDetails />} />
             <Route path="/owner/services" element={<Services />} />
+            <Route path="/owner/staff" element={<ManageStaff />} />
             <Route path="/owner/analytics" element={<Analytics />} />
             <Route path="/owner/ai-predictions" element={<AIPredictions />} />
           </Route>

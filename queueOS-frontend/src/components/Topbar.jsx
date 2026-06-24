@@ -1,4 +1,4 @@
-import { Menu, Bell, LogOut, ChevronDown } from 'lucide-react'
+import { Menu, Bell, LogOut, ChevronDown, Search } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -23,65 +23,72 @@ export default function Topbar({ onMenuClick }) {
   }
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
-      <button
-        onClick={onMenuClick}
-        className="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
-      >
-        <Menu size={20} />
-      </button>
+    <header className="flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-4 shadow-sm shadow-slate-950/5 backdrop-blur-xl lg:px-6">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden rounded-2xl border border-slate-200 bg-white/90 p-2 text-slate-600 shadow-sm transition hover:bg-slate-50"
+        >
+          <Menu size={20} />
+        </button>
 
-      <div className="hidden lg:block">
-        <h2 className="text-gray-800 font-semibold text-sm">
-          Welcome back, {user?.name?.split(' ')[0]} 👋
-        </h2>
+        <div className="hidden md:flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm">
+          <Search size={18} className="text-slate-400" />
+          <input
+            type="search"
+            placeholder="Search queues, services, businesses..."
+            className="w-60 bg-transparent pr-2 text-sm text-slate-700 outline-none placeholder:text-slate-400"
+          />
+        </div>
+      </div>
+
+      <div className="hidden lg:flex items-center gap-3 text-sm text-slate-600">
+        <span className="rounded-full bg-slate-100 px-3 py-2">Good to see you, {user?.name?.split(' ')[0]}</span>
       </div>
 
       <div className="flex items-center gap-3">
-        <button className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+        <button className="relative rounded-2xl border border-slate-200 bg-white/95 p-2 text-slate-600 shadow-sm transition hover:bg-slate-50">
           <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+          <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold text-white">3</span>
         </button>
 
         <div className="relative">
           <button
             onClick={() => setDropOpen(!dropOpen)}
-            className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
-            <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-              <span className="text-primary-700 font-semibold text-sm">
-                {user?.name?.charAt(0)}
-              </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-100 text-primary-700">
+              {user?.name?.charAt(0)}
             </div>
             <div className="hidden sm:block text-left">
-              <p className="text-sm font-medium text-gray-800 leading-none">{user?.name}</p>
-              <span className={`text-xs px-1.5 py-0.5 rounded font-medium mt-0.5 inline-block ${ROLE_BADGE[user?.role]}`}>
+              <p className="text-sm font-semibold text-slate-900 leading-none">{user?.name}</p>
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${ROLE_BADGE[user?.role]}`}>
                 {user?.role}
               </span>
             </div>
-            <ChevronDown size={16} className="text-gray-400" />
+            <ChevronDown size={16} className="text-slate-500" />
           </button>
 
           {dropOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+            <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
               <button
                 onClick={() => { navigate('/profile'); setDropOpen(false) }}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
               >
                 My Profile
               </button>
               <button
                 onClick={() => { navigate('/change-password'); setDropOpen(false) }}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
               >
                 Change Password
               </button>
-              <hr className="my-1 border-gray-100" />
+              <div className="border-t border-slate-200" />
               <button
                 onClick={handleLogout}
-                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                className="w-full px-4 py-3 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50"
               >
-                <LogOut size={14} />
+                <LogOut size={14} className="inline-block mr-2" />
                 Logout
               </button>
             </div>

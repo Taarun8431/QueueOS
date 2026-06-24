@@ -3,10 +3,14 @@ const mongoose = require("mongoose");
 const tokenSchema = new mongoose.Schema(
   {
     tokenNumber: {
-      type: Number,
+      type: String,
       required: true,
     },
-
+    tokenSequence: {
+      type: Number,
+      required: true,
+      default: 1,
+    },
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

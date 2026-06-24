@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext'
 import { toast } from 'react-toastify'
 import { User, Phone, Calendar, Mail, Save } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
+import api from '../../api'
+
 
 export default function Profile() {
   const { user, updateProfile } = useAuth()
@@ -15,9 +17,18 @@ export default function Profile() {
   })
 
   const onSubmit = async (data) => {
-    updateProfile(data)
-    toast.success('Profile updated successfully!')
+    try {
+      const res = await api.put('/auth/profile', {
+        name: data.name,
+        dob: data.dob,
+      })
+      updateProfile(res.data.data)
+      toast.success('Profile updated successfully!')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Update failed')
+    }
   }
+
 
   return (
     <div className="max-w-2xl">

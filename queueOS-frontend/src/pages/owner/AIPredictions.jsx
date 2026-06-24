@@ -1,115 +1,121 @@
-import { BrainCircuit, TrendingUp, Clock, Users, Zap, AlertCircle } from 'lucide-react'
+import { useState } from 'react'
+import { BrainCircuit, TrendingUp, Clock, Users, Zap } from 'lucide-react'
+import { toast } from 'react-toastify'
 import PageHeader from '../../components/PageHeader'
+import api from '../../api'
 
-const predictions = [
-  { time: '09:00 – 10:00', expected: 35, confidence: 92, level: 'High' },
-  { time: '10:00 – 11:00', expected: 62, confidence: 88, level: 'High' },
-  { time: '11:00 – 12:00', expected: 89, confidence: 85, level: 'Peak' },
-  { time: '12:00 – 13:00', expected: 45, confidence: 90, level: 'Medium' },
-  { time: '13:00 – 14:00', expected: 30, confidence: 94, level: 'Low' },
-  { time: '14:00 – 15:00', expected: 55, confidence: 87, level: 'Medium' },
-  { time: '15:00 – 16:00', expected: 78, confidence: 83, level: 'High' },
-  { time: '16:00 – 17:00', expected: 91, confidence: 86, level: 'Peak' },
-]
-
-const levelColors = {
-  Peak:   'bg-red-100 text-red-700',
-  High:   'bg-orange-100 text-orange-700',
-  Medium: 'bg-yellow-100 text-yellow-700',
-  Low:    'bg-green-100 text-green-700',
+const CATEGORIES = ['Hospital', 'Salon', 'Bank', 'Government Office', 'Service Center']
+const SERVICES_BY_CATEGORY = {
+  Hospital: ['Consultation', 'Dental', 'Eye Checkup', 'Blood Test'],
+  Salon: ['Haircut', 'Facial', 'Hair Spa', 'Shaving'],
+  Bank: ['Account Opening', 'Cash Deposit', 'Loan Inquiry'],
+  'Government Office': ['Certificate Issue', 'Verification', 'Registration'],
+  'Service Center': ['Mobile Repair', 'Laptop Repair', 'Inspection'],
 }
 
 export default function AIPredictions() {
+  const [form, setForm] = useState({
+    businessCategory: 'Hospital',
+    serviceType: 'Consultation',
+    queueLength: 10,
+    hourOfDay: new Date().getHours(),
+    dayOfWeek: new Date().getDay() || 7,
+    avgServiceDuration: 20,
+    staffCount: 3,
+  })
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const handlePredict = async () => {
+    setLoading(true)
+    try {
+      const res = await api.post('/queue/predict-wait-time', form)
+      setResult(res.data.predictedWaitTime)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Prediction failed. Make sure the ML service is running.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const services = SERVICES_BY_CATEGORY[form.businessCategory] || []
+
   return (
     <div>
-      <PageHeader title="AI Predictions" subtitle="Machine learning-powered queue forecasting" />
+      <PageHeader title="AI Predictions" subtitle="Machine learning-powered wait time prediction" />
 
-      {/* AI Badge */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 mb-6 text-white">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-white/20 rounded-xl">
-            <BrainCircuit size={20} />
-          </div>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-white/20 rounded-xl"><BrainCircuit size={20} /></div>
           <div>
             <p className="font-bold">AI Queue Intelligence</p>
-            <p className="text-purple-200 text-xs">Powered by historical patterns & ML models</p>
+            <p className="text-purple-200 text-xs">Enter queue parameters to get a predicted wait time</p>
           </div>
-        </div>
-        <div className="grid grid-cols-3 gap-3 mt-4">
-          {[
-            { label: 'Model Accuracy', value: '89.4%' },
-            { label: 'Data Points', value: '124K' },
-            { label: 'Last Trained', value: '2h ago' },
-          ].map(m => (
-            <div key={m.label} className="bg-white/10 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold">{m.value}</p>
-              <p className="text-purple-200 text-xs">{m.label}</p>
-            </div>
-          ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Hourly Forecast */}
         <div className="card">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Clock size={16} className="text-purple-500" /> Today's Hourly Forecast
-          </h3>
-          <div className="space-y-2">
-            {predictions.map(p => (
-              <div key={p.time} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500 w-28">{p.time}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${levelColors[p.level]}`}>
-                    {p.level}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-900">{p.expected} visitors</p>
-                  <p className="text-xs text-gray-400">{p.confidence}% confidence</p>
-                </div>
+          <h3 className="font-semibold text-gray-900 mb-4">Prediction Parameters</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Business Category</label>
+              <select className="input-field" value={form.businessCategory}
+                onChange={e => setForm(p => ({ ...p, businessCategory: e.target.value, serviceType: SERVICES_BY_CATEGORY[e.target.value]?.[0] || '' }))}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Service Type</label>
+              <select className="input-field" value={form.serviceType}
+                onChange={e => setForm(p => ({ ...p, serviceType: e.target.value }))}>
+                {services.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Queue Length</label>
+                <input type="number" className="input-field" min={0} value={form.queueLength}
+                  onChange={e => setForm(p => ({ ...p, queueLength: +e.target.value }))} />
               </div>
-            ))}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Staff Count</label>
+                <input type="number" className="input-field" min={1} value={form.staffCount}
+                  onChange={e => setForm(p => ({ ...p, staffCount: +e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Hour of Day (0-23)</label>
+                <input type="number" className="input-field" min={0} max={23} value={form.hourOfDay}
+                  onChange={e => setForm(p => ({ ...p, hourOfDay: +e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Avg Service Duration (min)</label>
+                <input type="number" className="input-field" min={1} value={form.avgServiceDuration}
+                  onChange={e => setForm(p => ({ ...p, avgServiceDuration: +e.target.value }))} />
+              </div>
+            </div>
+            <button onClick={handlePredict} disabled={loading} className="btn-primary w-full mt-2">
+              {loading ? 'Predicting...' : 'Get Prediction'}
+            </button>
           </div>
         </div>
 
-        {/* Recommendations */}
-        <div className="space-y-4">
-          <div className="card">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Zap size={16} className="text-yellow-500" /> Smart Recommendations
-            </h3>
-            <div className="space-y-3">
-              {[
-                { icon: Users, color: 'text-blue-600 bg-blue-50', title: 'Add Staff at 11AM', desc: 'Predicted 89 visitors. Consider 2 extra counters.' },
-                { icon: Clock, color: 'text-orange-600 bg-orange-50', title: 'Extend Hours Friday', desc: 'Peak demand extends to 6PM on Fridays historically.' },
-                { icon: TrendingUp, color: 'text-green-600 bg-green-50', title: 'Pre-book Slots', desc: 'Opening online booking reduces peak load by 22%.' },
-              ].map(r => (
-                <div key={r.title} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-                  <div className={`p-2 rounded-lg flex-shrink-0 ${r.color}`}>
-                    <r.icon size={14} />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">{r.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{r.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card border border-amber-200 bg-amber-50">
-            <div className="flex items-start gap-3">
-              <AlertCircle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-amber-800 text-sm">Coming Soon</p>
-                <p className="text-amber-700 text-xs mt-1">
-                  Full AI integration with real-time queue data will be available in the next release.
-                  Currently showing static predictions for UI preview.
-                </p>
+        <div className="card flex flex-col items-center justify-center text-center">
+          {result !== null ? (
+            <>
+              <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                <Clock size={36} className="text-purple-600" />
               </div>
-            </div>
-          </div>
+              <p className="text-5xl font-black text-gray-900 mb-2">{result} <span className="text-2xl font-semibold text-gray-400">min</span></p>
+              <p className="text-gray-500 text-sm">Predicted wait time</p>
+              <p className="text-xs text-gray-400 mt-2">{form.businessCategory} · {form.serviceType} · {form.queueLength} in queue</p>
+            </>
+          ) : (
+            <>
+              <BrainCircuit size={48} className="text-gray-200 mb-4" />
+              <p className="text-gray-400">Fill in the parameters and click Get Prediction</p>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -1,44 +1,62 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
+import api, { setAccessToken } from '../api'
+
 
 const AuthContext = createContext(null)
 
-// Dummy users for UI demo (no API yet)
-const DUMMY_USERS = {
-  customer: { id: 1, name: 'Alex Johnson', email: 'customer@demo.com', role: 'customer', phone: '555-0101', dob: '1995-06-15' },
-  owner:    { id: 2, name: 'Sarah Williams', email: 'owner@demo.com', role: 'owner', phone: '555-0202', dob: '1988-03-22' },
-  staff:    { id: 3, name: 'Mike Davis', email: 'staff@demo.com', role: 'staff', phone: '555-0303', dob: '1992-11-08' },
-  admin:    { id: 4, name: 'Admin User', email: 'admin@demo.com', role: 'admin', phone: '555-0404', dob: '1985-01-10' },
-}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const login = (email, password) => {
-    // Demo login — match by role keyword in email
-    let matched = null
-    if (email.includes('customer')) matched = DUMMY_USERS.customer
-    else if (email.includes('owner'))    matched = DUMMY_USERS.owner
-    else if (email.includes('staff'))    matched = DUMMY_USERS.staff
-    else if (email.includes('admin'))    matched = DUMMY_USERS.admin
-    else matched = DUMMY_USERS.customer // default
 
-    setUser(matched)
-    return matched
+  const login = async (email, password) => {
+  const res = await api.post('/auth/login', { email, password })
+  setAccessToken(res.data.accessToken)
+  setUser(res.data.data)
+  localStorage.setItem('user', JSON.stringify(res.data.data))
+  return res.data.data
+}
+
+
+ const logout = async () => {
+  await api.post('/auth/logout')
+  setAccessToken(null)
+  setUser(null)
+  localStorage.removeItem('user')
+}
+
+useEffect(() => {
+  const savedUser = localStorage.getItem('user')
+  if (savedUser) {
+    api.post('/auth/refresh')
+      .then(res => {
+        setAccessToken(res.data.accessToken)
+        setUser(JSON.parse(savedUser))
+      })
+      .catch(() => localStorage.removeItem('user'))
+      .finally(() => setLoading(false))
+  } else {
+    setLoading(false)
   }
+}, [])
 
-  const logout = () => setUser(null)
+
 
   const updateProfile = (data) => {
     setUser(prev => ({ ...prev, ...data }))
   }
+  if (loading) return null
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateProfile }}>
+   <AuthContext.Provider value={{ user, login, logout, updateProfile, loading }}>
+
       {children}
     </AuthContext.Provider>
   )
 }
 
 export function useAuth() {
+ 
   return useContext(AuthContext)
 }

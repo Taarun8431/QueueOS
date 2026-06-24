@@ -13,7 +13,7 @@ export default function Login() {
 
   const onSubmit = async (data) => {
     try {
-      const user = login(data.email, data.password)
+      const user =await login(data.email, data.password)
       toast.success(`Welcome back, ${user.name}!`)
       navigate(`/${user.role}/dashboard`)
     } catch (err) {
@@ -22,58 +22,78 @@ export default function Login() {
   }
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">Sign in</h2>
-      <p className="text-gray-500 text-sm mb-6">Enter your credentials to access your account</p>
-
-      {/* Demo hint */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-xs text-blue-700">
-        <p className="font-semibold mb-1">Demo Accounts:</p>
-        <p>customer@demo.com · owner@demo.com · staff@demo.com · admin@demo.com</p>
-        <p className="mt-0.5 text-blue-500">Any password works</p>
+    <div className="space-y-8">
+      <div className="space-y-3">
+        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-600">Welcome back</p>
+        <h2 className="text-3xl font-black text-slate-900">Sign in to QueueOS</h2>
+        <p className="max-w-xl text-sm text-slate-500">Access your dashboard, manage queues, and stay on top of appointments with a polished workflow.</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5 shadow-sm">
+        <div className="rounded-[1.5rem] bg-white p-5 shadow-sm">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-3xl bg-blue-50 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-blue-600">Demo access</p>
+              <p className="mt-3 text-sm text-slate-600">Use any of these demo accounts to preview the full experience.</p>
+              <ul className="mt-4 space-y-2 text-sm text-slate-700">
+                <li>customer@demo.com</li>
+                <li>owner@demo.com</li>
+                <li>staff@demo.com</li>
+                <li>admin@demo.com</li>
+              </ul>
+            </div>
+            <div className="rounded-3xl bg-slate-900 p-4 text-white shadow-inner">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Fast access</p>
+              <p className="mt-3 text-sm leading-6 text-slate-200">QueueOS is built for quick queue onboarding, real-time staff tools, and a clean customer journey.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 rounded-[1.75rem] bg-white p-8 shadow-[0_25px_80px_-40px_rgba(15,23,42,0.16)]">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
           <div className="relative">
-            <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="email"
               placeholder="you@example.com"
-              className={`input-field pl-9 ${errors.email ? 'border-red-400 focus:ring-red-400' : ''}`}
+              className={`input-field pl-12 ${errors.email ? 'border-red-400 focus:ring-red-400' : ''}`}
               {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+$/i, message: 'Invalid email' } })}
             />
           </div>
-          {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+          {errors.email && <p className="mt-2 text-xs text-red-500">{errors.email.message}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
           <div className="relative">
-            <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type={showPass ? 'text' : 'password'}
               placeholder="••••••••"
-              className={`input-field pl-9 pr-10 ${errors.password ? 'border-red-400 focus:ring-red-400' : ''}`}
+              className={`input-field pl-12 pr-14 ${errors.password ? 'border-red-400 focus:ring-red-400' : ''}`}
               {...register('password', { required: 'Password is required', minLength: { value: 4, message: 'Min 4 characters' } })}
             />
-            <button type="button" onClick={() => setShowPass(!showPass)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <button
+              type="button"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              onClick={() => setShowPass(!showPass)}
+            >
               {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+          {errors.password && <p className="mt-2 text-xs text-red-500">{errors.password.message}</p>}
         </div>
 
-        <button type="submit" disabled={isSubmitting} className="btn-primary w-full py-2.5 text-sm">
+        <button type="submit" disabled={isSubmitting} className="btn-primary w-full py-3 text-sm">
           {isSubmitting ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
 
-      <p className="text-center text-sm text-gray-500 mt-6">
+      <p className="text-center text-sm text-slate-500">
         Don't have an account?{' '}
-        <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">Sign up</Link>
+        <Link to="/register" className="font-semibold text-primary-600 hover:text-primary-700">Create account</Link>
       </p>
     </div>
   )

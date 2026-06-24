@@ -2,7 +2,7 @@ const express = require("express");
 
 const router = express.Router();
 
-const { createBusiness, getbusiness, getBusinessById, updateBusiness,deleteBusiness } = require("../controllers/business.controller");
+const { createBusiness, getbusiness, getAllBusinesses, getBusinessById, updateBusiness,deleteBusiness } = require("../controllers/business.controller");
 const protect = require("../middlewares/auth.middleware");
 const authorizeRoles = require("../middlewares/role.middleware");
 
@@ -14,6 +14,8 @@ router.post(
 );
 
 router.get("/my", protect, authorizeRoles("owner", "admin"), getbusiness);
+
+router.get("/", protect, getAllBusinesses);
 
 router.get("/:id", protect, getBusinessById);
 

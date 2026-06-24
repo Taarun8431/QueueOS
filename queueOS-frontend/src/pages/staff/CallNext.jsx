@@ -1,92 +1,165 @@
-import { useState } from 'react'
-import { PhoneCall, Volume2, ChevronRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { PhoneCall, CheckCircle, XCircle, Users } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { DUMMY_QUEUE } from '../../data/dummy'
 import PageHeader from '../../components/PageHeader'
+import api from '../../api'
+import socket from '../../utils/socket'
 
 export default function CallNext() {
-  const waiting = DUMMY_QUEUE.filter(q => q.status === 'waiting')
-  const [called, setCalled] = useState(null)
-  const [calling, setCalling] = useState(false)
+  const [assignment, setAssignment] = useState(null)
+  const [services, setServices] = useState([])
+  const [selectedService, setSelectedService] = useState('all')
+  const [queue, setQueue] = useState([])
+  const [loadingAction, setLoadingAction] = useState(null)
 
-  const handleCall = () => {
-    if (waiting.length === 0) { toast.info('No one in queue'); return }
-    setCalling(true)
-    setTimeout(() => {
-      setCalled(waiting[0])
-      setCalling(false)
-      toast.success(`Calling ${waiting[0].name} – Token ${waiting[0].id}`)
-    }, 1000)
+  useEffect(() => {
+    api.get('/staff/my-assignment')
+      .then(res => {
+        const a = res.data.data
+        setAssignment(a)
+        const bizId = a.businessId._id || a.businessId
+        return api.get(`/services/business/${bizId}`)
+      })
+      .then(res => {
+        setServices(res.data.data)
+      })
+      .catch(() => toast.error('Failed to load services'))
+  }, [])
+
+  useEffect(() => {
+    if (!assignment) return
+    const bizId = assignment.businessId._id || assignment.businessId
+    
+    api.get(`/queue/current/${bizId}/${selectedService}`)
+      .then(res => setQueue(res.data.data))
+      .catch(() => toast.error('Failed to load queue'))
+
+    socket.emit('joinQueueRoom', { businessId: bizId, serviceId: selectedService })
+    
+    const handleUpdate = () => {
+      api.get(`/queue/current/${bizId}/${selectedService}`).then(res => setQueue(res.data.data)).catch(() => {})
+    }
+    
+    socket.on('queueUpdated', handleUpdate)
+    
+    return () => { 
+      socket.off('queueUpdated', handleUpdate) 
+    }
+  }, [assignment, selectedService])
+
+  const handleAction = async (action, tokenId) => {
+    setLoadingAction(tokenId)
+    try {
+      if (action === 'call') {
+        await api.put(`/queue/call/${tokenId}`)
+        toast.success(`Token called successfully!`)
+      } else if (action === 'served') {
+        await api.put(`/queue/served/${tokenId}`)
+        toast.success(`Marked as Served`)
+      } else if (action === 'no-show') {
+        await api.put(`/queue/no-show/${tokenId}`)
+        toast.success(`Marked as No Show`)
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Action failed')
+    } finally {
+      setLoadingAction(null)
+    }
   }
+
+  const waitingQueue = queue.filter(q => q.status === 'waiting')
+  const attendingQueue = queue.filter(q => q.status === 'called')
 
   return (
     <div className="max-w-md">
-      <PageHeader title="Call Next" subtitle="Call the next person in queue" />
+      <PageHeader title="Queue Management" subtitle="Call and attend to customers" />
 
-      {/* Next in queue preview */}
-      {waiting[0] && (
-        <div className="card mb-6">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Next in Queue</p>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center font-bold text-primary-700 text-lg">
-              {waiting[0].position}
-            </div>
-            <div>
-              <p className="font-bold text-gray-900">{waiting[0].name}</p>
-              <p className="text-sm text-gray-500">{waiting[0].service}</p>
-              <p className="text-xs text-gray-400 font-mono">{waiting[0].id}</p>
-            </div>
-          </div>
+      {services.length > 0 && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Select Department</label>
+          <select 
+            className="input-field w-full bg-white shadow-sm" 
+            value={selectedService} 
+            onChange={e => setSelectedService(e.target.value)}
+          >
+            <option value="all">All Departments</option>
+            {services.map(s => (
+              <option key={s._id} value={s._id}>{s.serviceName}</option>
+            ))}
+          </select>
         </div>
       )}
 
-      {/* Call Button */}
-      <button onClick={handleCall} disabled={calling}
-        className={`w-full py-6 rounded-2xl flex flex-col items-center gap-3 transition-all duration-200 ${
-          calling ? 'bg-gray-100 cursor-wait' :
-          'bg-primary-600 hover:bg-primary-700 shadow-lg hover:shadow-xl active:scale-95'
-        } text-white`}>
-        {calling ? (
-          <>
-            <Volume2 size={32} className="animate-pulse" />
-            <span className="font-semibold text-lg">Calling...</span>
-          </>
-        ) : (
-          <>
-            <PhoneCall size={32} />
-            <span className="font-semibold text-lg">Call Next Customer</span>
-            {waiting[0] && <span className="text-primary-200 text-sm">{waiting[0].name} · #{waiting[0].position}</span>}
-          </>
-        )}
-      </button>
-
-      {/* Recently Called */}
-      {called && (
-        <div className="card mt-6 border border-green-200 bg-green-50">
-          <p className="text-xs font-semibold text-green-700 mb-2">Just Called</p>
-          <div className="flex items-center gap-2">
-            <PhoneCall size={14} className="text-green-600" />
-            <span className="text-sm font-medium text-gray-900">{called.name}</span>
-            <span className="text-xs text-gray-400">– {called.id} · {called.service}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Remaining */}
-      <div className="card mt-4">
-        <p className="text-sm font-medium text-gray-700 mb-3">{waiting.length} people waiting</p>
-        <div className="space-y-1.5">
-          {waiting.slice(1, 5).map(q => (
-            <div key={q.id} className="flex items-center justify-between text-sm text-gray-600 py-1">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
-                  {q.position}
-                </span>
-                <span>{q.name}</span>
+      {attendingQueue.length > 0 && (
+        <div className="mb-8">
+          <h3 className="font-semibold text-green-700 mb-3 uppercase text-xs tracking-wider">Currently Attending</h3>
+          <div className="space-y-3">
+            {attendingQueue.map(q => (
+              <div key={q._id} className="card py-4 px-4 border-2 border-green-200 bg-green-50 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold bg-green-500 text-white text-lg">
+                      {q.tokenNumber}
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900 text-lg">Token #{q.tokenNumber}</p>
+                      <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                        <PhoneCall size={12} /> Attending
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleAction('served', q._id)}
+                    disabled={loadingAction === q._id}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <CheckCircle size={16} /> Served
+                  </button>
+                  <button 
+                    onClick={() => handleAction('no-show', q._id)}
+                    disabled={loadingAction === q._id}
+                    className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-xl py-2 text-sm flex items-center justify-center gap-1 transition-colors"
+                  >
+                    <XCircle size={16} /> No Show
+                  </button>
+                </div>
               </div>
-              <span className="text-xs text-gray-400">{q.service}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h3 className="font-semibold text-gray-900 mb-3 uppercase text-xs tracking-wider">Up Next ({waitingQueue.length})</h3>
+        <div className="space-y-3">
+          {waitingQueue.map((q, idx) => (
+            <div key={q._id} className="card py-3 px-4 flex items-center justify-between shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold bg-gray-100 text-gray-700">
+                  {q.tokenNumber}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Token #{q.tokenNumber}</p>
+                  <p className="text-xs text-gray-400">Position: {idx + 1}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => handleAction('call', q._id)}
+                disabled={loadingAction === q._id}
+                className="bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-1"
+              >
+                <PhoneCall size={14} /> Call
+              </button>
             </div>
           ))}
+          {waitingQueue.length === 0 && (
+            <div className="text-center py-8 bg-gray-50 rounded-2xl border border-gray-100">
+              <Users size={32} className="text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-500 text-sm">No one is waiting</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

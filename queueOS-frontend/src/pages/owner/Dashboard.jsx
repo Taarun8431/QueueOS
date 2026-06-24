@@ -1,87 +1,89 @@
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Users, Clock, TrendingUp, PlusCircle, ArrowRight } from 'lucide-react'
+import { Building2, Users, Clock, TrendingUp, PlusCircle } from 'lucide-react'
 import StatCard from '../../components/StatCard'
 import PageHeader from '../../components/PageHeader'
-import { DUMMY_BUSINESSES } from '../../data/dummy'
+import api from '../../api'
 
 export default function OwnerDashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [businesses, setBusinesses] = useState([])
+
+  useEffect(() => {
+    api.get('/business/my').then(res => setBusinesses(res.data.data)).catch(() => {})
+  }, [])
 
   const stats = [
-    { title: 'Total Businesses', value: DUMMY_BUSINESSES.length, icon: Building2, color: 'purple', change: 0 },
-    { title: "Today's Visitors", value: 275, icon: Users, color: 'blue', change: 12 },
-    { title: 'Avg Wait Time', value: '14 min', icon: Clock, color: 'orange', sub: 'Across all locations' },
-    { title: 'Queues Served', value: 1248, icon: TrendingUp, color: 'green', change: 8 },
+    { title: 'Locations', value: businesses.length, icon: Building2, color: 'purple', change: 0 },
+    { title: "Today's Visitors", value: '—', icon: Users, color: 'blue' },
+    { title: 'Avg Wait Time', value: '—', icon: Clock, color: 'orange' },
+    { title: 'Queues Served', value: '—', icon: TrendingUp, color: 'green' },
   ]
 
-  const activeBusinesses = DUMMY_BUSINESSES.filter(b => b.status === 'active')
-
   return (
-    <div>
-      <PageHeader
-        title={`Welcome, ${user?.name?.split(' ')[0]}`}
-        subtitle="Here's what's happening with your businesses today"
-        action={
-          <button onClick={() => navigate('/owner/businesses/create')}
-            className="btn-primary flex items-center gap-2 text-sm">
-            <PlusCircle size={16} /> New Business
-          </button>
-        }
-      />
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map(s => <StatCard key={s.title} {...s} />)}
-      </div>
-
-      {/* Active Businesses */}
-      <div className="card mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">Active Businesses</h3>
-          <button onClick={() => navigate('/owner/businesses')}
-            className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1">
-            View all <ArrowRight size={14} />
-          </button>
-        </div>
-        <div className="space-y-3">
-          {activeBusinesses.map(b => (
-            <div key={b.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
-                  <Building2 size={18} className="text-primary-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">{b.name}</p>
-                  <p className="text-xs text-gray-400">{b.category} · {b.openingTime}–{b.closingTime}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold text-gray-800">{b.todayVisitors}</p>
-                <p className="text-xs text-gray-400">visitors today</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { label: 'Create Business', desc: 'Add a new location', icon: PlusCircle, path: '/owner/businesses/create', color: 'text-purple-600 bg-purple-50' },
-          { label: 'View Analytics', desc: 'See performance metrics', icon: TrendingUp, path: '/owner/analytics', color: 'text-blue-600 bg-blue-50' },
-          { label: 'Manage Services', desc: 'Update service offerings', icon: Clock, path: '/owner/services', color: 'text-green-600 bg-green-50' },
-        ].map(a => (
-          <button key={a.label} onClick={() => navigate(a.path)}
-            className="card flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer text-left">
-            <div className={`p-3 rounded-xl ${a.color}`}><a.icon size={20} /></div>
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="hero-panel">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-semibold text-gray-900 text-sm">{a.label}</p>
-              <p className="text-xs text-gray-400">{a.desc}</p>
+              <p className="text-sm uppercase tracking-[0.28em] text-slate-200">Owner dashboard</p>
+              <h2 className="mt-3 text-4xl font-black text-white">Hello, {user?.name?.split(' ')[0]}</h2>
+              <p className="mt-3 max-w-xl text-sm text-slate-200/90">Manage businesses, track foot traffic, and see queue performance at a glance.</p>
             </div>
-          </button>
-        ))}
+            <button onClick={() => navigate('/owner/businesses/create')} className="btn-secondary w-full max-w-xs text-sm sm:w-auto flex items-center gap-2">
+              <PlusCircle size={16} /> New business
+            </button>
+          </div>
+        </div>
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Business snapshot</h3>
+            <button onClick={() => navigate('/owner/analytics')} className="text-sm font-semibold text-primary-600">View analytics</button>
+          </div>
+          <div className="grid gap-4">
+            {stats.map(stat => (
+              <div key={stat.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{stat.title}</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900">{stat.value}</p>
+                  </div>
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-3xl bg-primary-100 text-primary-600">
+                    <stat.icon size={20} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-900">Active locations</h3>
+          <button onClick={() => navigate('/owner/businesses')} className="text-sm font-semibold text-primary-600">See all</button>
+        </div>
+        {businesses.length === 0 ? (
+          <p className="text-gray-400 text-sm">No businesses yet. <button onClick={() => navigate('/owner/businesses/create')} className="text-primary-600 underline">Create one</button></p>
+        ) : (
+          <div className="space-y-3">
+            {businesses.filter(b => b.isActive).map(b => (
+              <div key={b._id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary-100 text-primary-700">
+                    <Building2 size={18} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">{b.businessName}</p>
+                    <p className="text-sm text-slate-500">{b.category} · {b.workingHours?.open}–{b.workingHours?.close}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

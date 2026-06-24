@@ -72,7 +72,7 @@ const getServicesByBusiness = async (req, res) => {
     try {
         const services = await Service.find({
             businessId: req.params.businessId,
-            isActive: true,
+            isDeleted: false,
         });
 
         return res.status(200).json({
@@ -92,7 +92,7 @@ const getServiceById = async (req, res) => {
     try {
         const service = await Service.findOne({
             _id: req.params.id,
-            isActive: true,
+            isDeleted: false,
         });
 
         if (!service) {
@@ -118,7 +118,7 @@ const updateService = async (req, res) => {
     try {
         const service = await Service.findOne({
             _id: req.params.id,
-            isActive: true,
+            isDeleted: false,
         });
 
         if (!service) {
@@ -178,7 +178,7 @@ const deleteService = async (req, res) => {
     try {
         const service = await Service.findOne({
             _id: req.params.id,
-            isActive: true,
+            isDeleted: false,
         });
 
         if (!service) {
@@ -200,7 +200,7 @@ const deleteService = async (req, res) => {
             });
         }
 
-        service.isActive = false;
+        service.isDeleted = true;
         await service.save();
 
         return res.status(200).json({

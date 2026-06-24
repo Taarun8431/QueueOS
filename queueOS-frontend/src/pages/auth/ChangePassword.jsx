@@ -3,6 +3,7 @@ import { toast } from 'react-toastify'
 import { Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import PageHeader from '../../components/PageHeader'
+import api from '../../api'
 
 export default function ChangePassword() {
   const [showCurrent, setShowCurrent] = useState(false)
@@ -11,11 +12,18 @@ export default function ChangePassword() {
   const newPass = watch('newPassword')
 
   const onSubmit = async (data) => {
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 800))
-    toast.success('Password changed successfully!')
-    reset()
+    try {
+      await api.put('/auth/change-password', {
+        oldPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      })
+      toast.success('Password changed successfully!')
+      reset()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to change password')
+    }
   }
+
 
   return (
     <div className="max-w-md">

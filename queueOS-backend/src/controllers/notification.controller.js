@@ -1,14 +1,22 @@
 const Notification = require("../models/notification.model");
+const { getPagination, getPaginationMeta } = require("../utils/pagination");
 
 const getMyNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({
-      userId: req.user.userId,
-    }).sort({ createdAt: -1 });
+    const { page, limit, skip } = getPagination(req.query);
+    const filter = { userId: req.user.userId };
+
+    const [notifications, total] = await Promise.all([
+      Notification.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Notification.countDocuments(filter),
+    ]);
 
     return res.status(200).json({
       success: true,
-      count: notifications.length,
+      pagination: getPaginationMeta(total, page, limit),
       data: notifications,
     });
   } catch (error) {

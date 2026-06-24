@@ -1,108 +1,104 @@
+import { useState, useEffect } from 'react'
 import { BarChart3, TrendingUp, Users, Clock, ArrowUp, ArrowDown } from 'lucide-react'
+import { toast } from 'react-toastify'
 import PageHeader from '../../components/PageHeader'
 import StatCard from '../../components/StatCard'
-
-const weekData = [
-  { day: 'Mon', visitors: 82 },
-  { day: 'Tue', visitors: 95 },
-  { day: 'Wed', visitors: 120 },
-  { day: 'Thu', visitors: 88 },
-  { day: 'Fri', visitors: 140 },
-  { day: 'Sat', visitors: 175 },
-  { day: 'Sun', visitors: 60 },
-]
-
-const maxVal = Math.max(...weekData.map(d => d.visitors))
+import api from '../../api'
 
 export default function Analytics() {
-  const stats = [
-    { title: 'Total Visitors (Month)', value: '3,420', icon: Users, color: 'blue', change: 14 },
-    { title: 'Avg. Wait Time', value: '11 min', icon: Clock, color: 'orange', change: -8 },
-    { title: 'Queues Completed', value: '1,248', icon: TrendingUp, color: 'green', change: 22 },
-    { title: 'No-Show Rate', value: '4.2%', icon: BarChart3, color: 'red', change: -3 },
-  ]
+  const [businesses, setBusinesses] = useState([])
+  const [selectedBusiness, setSelectedBusiness] = useState('')
+  const [stats, setStats] = useState(null)
+  const [peakHours, setPeakHours] = useState([])
+  const [serviceStats, setServiceStats] = useState([])
+  const [loading, setLoading] = useState(false)
 
-  const topServices = [
-    { name: 'General Consultation', count: 420, pct: 34 },
-    { name: 'Blood Test', count: 280, pct: 22 },
-    { name: 'X-Ray', count: 195, pct: 16 },
-    { name: 'Pharmacy', count: 310, pct: 25 },
-    { name: 'Dental Checkup', count: 42, pct: 3 },
-  ]
+  useEffect(() => {
+    api.get('/business/my')
+      .then(res => {
+        setBusinesses(res.data.data)
+        if (res.data.data.length > 0) setSelectedBusiness(res.data.data[0]._id)
+      })
+      .catch(() => toast.error('Failed to load businesses'))
+  }, [])
+
+  useEffect(() => {
+    if (!selectedBusiness) return
+    setLoading(true)
+    Promise.all([
+      api.get(`/analytics/business/${selectedBusiness}`),
+      api.get(`/analytics/peak-hours/${selectedBusiness}`),
+      api.get(`/analytics/services/${selectedBusiness}`),
+    ])
+      .then(([statsRes, peakRes, serviceRes]) => {
+        setStats(statsRes.data.data)
+        setPeakHours(peakRes.data.data)
+        setServiceStats(serviceRes.data.data)
+      })
+      .catch(() => toast.error('Failed to load analytics'))
+      .finally(() => setLoading(false))
+  }, [selectedBusiness])
+
+  const statCards = stats ? [
+    { title: 'Total Tokens', value: stats.totalTokensGenerated, icon: Users, color: 'blue' },
+    { title: 'Avg. Wait Time', value: `${stats.avgWaitTime} min`, icon: Clock, color: 'orange' },
+    { title: 'Customers Served', value: stats.customersServed, icon: TrendingUp, color: 'green' },
+    { title: 'No-Show Rate', value: `${stats.noShowRate}%`, icon: BarChart3, color: 'red' },
+  ] : []
+
+  const maxTokens = peakHours.length > 0 ? Math.max(...peakHours.map(p => p.totalTokens)) : 1
 
   return (
     <div>
       <PageHeader title="Analytics" subtitle="Business performance overview" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map(s => <StatCard key={s.title} {...s} />)}
-      </div>
+      {businesses.length > 1 && (
+        <select className="input-field mb-6 max-w-xs" value={selectedBusiness} onChange={e => setSelectedBusiness(e.target.value)}>
+          {businesses.map(b => <option key={b._id} value={b._id}>{b.businessName}</option>)}
+        </select>
+      )}
 
-      {/* Weekly Chart */}
-      <div className="card mb-6">
-        <h3 className="font-semibold text-gray-900 mb-6">Weekly Visitor Trend</h3>
-        <div className="flex items-end gap-3 h-40">
-          {weekData.map(d => (
-            <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-xs text-gray-500 font-medium">{d.visitors}</span>
-              <div
-                className="w-full bg-primary-500 rounded-t-lg transition-all duration-500 hover:bg-primary-600"
-                style={{ height: `${(d.visitors / maxVal) * 100}%` }}
-              />
-              <span className="text-xs text-gray-400">{d.day}</span>
+      {loading ? <p className="text-gray-400">Loading...</p> : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {statCards.map(s => <StatCard key={s.title} {...s} />)}
+          </div>
+
+          {peakHours.length > 0 && (
+            <div className="card mb-6">
+              <h3 className="font-semibold text-gray-900 mb-6">Peak Hours</h3>
+              <div className="flex items-end gap-3 h-40">
+                {peakHours.slice(0, 12).map(d => (
+                  <div key={d._id} className="flex-1 flex flex-col items-center gap-1">
+                    <span className="text-xs text-gray-500 font-medium">{d.totalTokens}</span>
+                    <div className="w-full bg-primary-500 rounded-t-lg hover:bg-primary-600"
+                      style={{ height: `${(d.totalTokens / maxTokens) * 100}%` }} />
+                    <span className="text-xs text-gray-400">{d._id}h</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
+          )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Top Services */}
-        <div className="card">
-          <h3 className="font-semibold text-gray-900 mb-4">Top Services</h3>
-          <div className="space-y-3">
-            {topServices.map(s => (
-              <div key={s.name}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-700">{s.name}</span>
-                  <span className="text-gray-500 font-medium">{s.count}</span>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div className="bg-primary-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${s.pct}%` }} />
-                </div>
+          {serviceStats.length > 0 && (
+            <div className="card">
+              <h3 className="font-semibold text-gray-900 mb-4">Services Breakdown</h3>
+              <div className="space-y-3">
+                {serviceStats.map(s => (
+                  <div key={s._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl text-sm">
+                    <p className="font-medium text-gray-900">{s.serviceName}</p>
+                    <div className="flex gap-4 text-xs text-gray-500">
+                      <span>Total: {s.totalTokens}</span>
+                      <span className="text-green-600">Served: {s.servedCount}</span>
+                      <span className="text-red-500">No-show: {s.noShowCount}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Quick Metrics */}
-        <div className="card">
-          <h3 className="font-semibold text-gray-900 mb-4">Performance vs Last Month</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'Customer Satisfaction', value: '94%', trend: 'up', delta: '+2%' },
-              { label: 'Queue Abandonment', value: '6.1%', trend: 'down', delta: '-1.4%' },
-              { label: 'Avg Service Duration', value: '18 min', trend: 'down', delta: '-2 min' },
-              { label: 'Peak Hour', value: '11:00 AM', trend: 'neutral', delta: 'unchanged' },
-              { label: 'Repeat Customers', value: '62%', trend: 'up', delta: '+5%' },
-            ].map(m => (
-              <div key={m.label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <span className="text-sm text-gray-600">{m.label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-900 text-sm">{m.value}</span>
-                  <span className={`text-xs flex items-center gap-0.5 ${
-                    m.trend === 'up' ? 'text-green-600' :
-                    m.trend === 'down' ? 'text-red-500' : 'text-gray-400'
-                  }`}>
-                    {m.trend === 'up' ? <ArrowUp size={10} /> : m.trend === 'down' ? <ArrowDown size={10} /> : null}
-                    {m.delta}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

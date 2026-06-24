@@ -1,84 +1,94 @@
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { Clock, CalendarCheck, Activity, Bell, ArrowRight } from 'lucide-react'
+import { Clock, CalendarCheck, Activity, Bell } from 'lucide-react'
 import PageHeader from '../../components/PageHeader'
-import { DUMMY_APPOINTMENTS, DUMMY_QUEUE } from '../../data/dummy'
+import api from '../../api'
 
 export default function CustomerDashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [appointments, setAppointments] = useState([])
+  const [myQueues, setMyQueues] = useState([])
 
-  const upcoming = DUMMY_APPOINTMENTS.filter(a => a.status === 'confirmed').slice(0, 2)
-  const currentPosition = 4
+  useEffect(() => {
+    api.get('/appointments/my').then(res => setAppointments(res.data.data?.filter(a => a.status === 'scheduled').slice(0, 2))).catch(() => {})
+    api.get('/queue/my').then(res => setMyQueues(res.data.data?.filter(q => ['waiting', 'called'].includes(q.status)).slice(0, 2))).catch(() => {})
+  }, [])
 
   const quickLinks = [
-    { label: 'Join Queue', desc: 'Walk-in at a business', icon: Clock, path: '/customer/join-queue', color: 'bg-blue-50 text-blue-600' },
-    { label: 'Book Appointment', desc: 'Schedule ahead of time', icon: CalendarCheck, path: '/customer/book-appointment', color: 'bg-green-50 text-green-600' },
-    { label: 'Queue Status', desc: 'Check your position', icon: Activity, path: '/customer/queue-status', color: 'bg-purple-50 text-purple-600' },
-    { label: 'Notifications', desc: 'View alerts & updates', icon: Bell, path: '/customer/notifications', color: 'bg-orange-50 text-orange-600' },
+    { label: 'Join Queue', desc: 'Walk in and get a token', icon: Clock, path: '/customer/join-queue', bg: 'bg-blue-50', text: 'text-blue-600' },
+    { label: 'Book Appointment', desc: 'Reserve your spot ahead', icon: CalendarCheck, path: '/customer/book-appointment', bg: 'bg-green-50', text: 'text-green-600' },
+    { label: 'Queue Status', desc: 'Track your position live', icon: Activity, path: '/customer/queue-status', bg: 'bg-purple-50', text: 'text-purple-600' },
+    { label: 'Notifications', desc: 'Stay updated in real time', icon: Bell, path: '/customer/notifications', bg: 'bg-orange-50', text: 'text-orange-600' },
   ]
 
   return (
-    <div>
-      <PageHeader
-        title={`Hello, ${user?.name?.split(' ')[0]} 👋`}
-        subtitle="Here's your queue and appointment summary"
-      />
+    <div className="space-y-6">
+      <PageHeader title={`Hello, ${user?.name?.split(' ')[0]} 👋`} subtitle="Here is your queue overview." />
 
-      {/* Live queue badge */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-5 mb-6 text-white">
-        <p className="text-blue-100 text-sm mb-1">Your current queue position</p>
-        <div className="flex items-end gap-3">
-          <p className="text-5xl font-black"># {currentPosition}</p>
-          <div className="mb-1">
-            <p className="font-semibold">CityMed Hospital</p>
-            <p className="text-blue-200 text-sm">Est. wait: ~28 minutes</p>
-          </div>
-        </div>
-        <button onClick={() => navigate('/customer/queue-status')}
-          className="mt-3 bg-white/20 hover:bg-white/30 text-white text-sm px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1">
-          View Status <ArrowRight size={13} />
-        </button>
-      </div>
-
-      {/* Quick Links */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {quickLinks.map(q => (
-          <button key={q.label} onClick={() => navigate(q.path)}
-            className="card flex flex-col items-start gap-3 hover:shadow-md transition-shadow cursor-pointer text-left p-4">
-            <div className={`p-2.5 rounded-xl ${q.color}`}><q.icon size={18} /></div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {quickLinks.map(link => (
+          <button key={link.label} onClick={() => navigate(link.path)}
+            className="card flex flex-col gap-3 rounded-[1.75rem] p-5 text-left transition hover:-translate-y-1 hover:shadow-lg">
+            <div className={`inline-flex h-12 w-12 items-center justify-center rounded-3xl ${link.bg} ${link.text}`}>
+              <link.icon size={20} />
+            </div>
             <div>
-              <p className="font-semibold text-gray-900 text-sm">{q.label}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{q.desc}</p>
+              <p className="font-semibold text-slate-900">{link.label}</p>
+              <p className="mt-1 text-sm text-slate-500">{link.desc}</p>
             </div>
           </button>
         ))}
       </div>
 
-      {/* Upcoming Appointments */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">Upcoming Appointments</h3>
-          <button onClick={() => navigate('/customer/appointments')}
-            className="text-primary-600 text-sm font-medium hover:underline flex items-center gap-1">
-            View all <ArrowRight size={13} />
-          </button>
-        </div>
-        {upcoming.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center py-4">No upcoming appointments</p>
-        ) : (
-          <div className="space-y-3">
-            {upcoming.map(a => (
-              <div key={a.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">{a.business}</p>
-                  <p className="text-xs text-gray-400">{a.service} · {a.date} at {a.time}</p>
-                </div>
-                <span className="badge-active">{a.status}</span>
-              </div>
-            ))}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Active Queues</h3>
+            <button onClick={() => navigate('/customer/queue-status')} className="text-sm font-semibold text-primary-600">View all</button>
           </div>
-        )}
+          {myQueues.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-400">No active queues.</div>
+          ) : (
+            <div className="space-y-3">
+              {myQueues.map(q => (
+                <div key={q._id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => { localStorage.setItem('activeTokenId', q._id); navigate('/customer/queue-status'); }}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{q.businessId?.businessName}</p>
+                      <p className="mt-1 text-sm text-slate-500">{q.serviceId?.serviceName}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${q.status === 'called' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {q.status}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm font-bold text-slate-900">Token #{q.tokenNumber}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Upcoming appointments</h3>
+            <button onClick={() => navigate('/customer/appointments')} className="text-sm font-semibold text-primary-600">View all</button>
+          </div>
+          {appointments.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-400">No upcoming appointments.</div>
+          ) : (
+            <div className="space-y-3">
+              {appointments.map(a => (
+                <div key={a._id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-900">{a.businessId?.businessName}</p>
+                  <p className="mt-1 text-sm text-slate-500">{a.serviceId?.serviceName}</p>
+                  <p className="mt-2 text-xs text-slate-400">{new Date(a.appointmentDate).toLocaleDateString()} at {a.appointmentTime}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

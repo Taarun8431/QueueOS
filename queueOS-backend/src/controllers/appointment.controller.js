@@ -1,6 +1,7 @@
 const Appointment = require("../models/appointment.model");
 const Business = require("../models/business.model");
 const Service = require("../models/services.model");
+const { getPagination, getPaginationMeta } = require("../utils/pagination");
 
 const createAppointment = async (req, res) => {
     try {
@@ -69,16 +70,22 @@ const createAppointment = async (req, res) => {
 
 const getMyAppointments = async (req, res) => {
     try {
-        const appointments = await Appointment.find({
-            userId: req.user.userId,
-        })
-            .populate("businessId", "businessName category address phone")
-            .populate("serviceId", "serviceName estimatedDuration price")
-            .sort({ appointmentDate: 1 });
+        const { page, limit, skip } = getPagination(req.query);
+        const filter = { userId: req.user.userId };
+
+        const [appointments, total] = await Promise.all([
+            Appointment.find(filter)
+                .populate("businessId", "businessName category address phone")
+                .populate("serviceId", "serviceName estimatedDuration price")
+                .sort({ appointmentDate: 1 })
+                .skip(skip)
+                .limit(limit),
+            Appointment.countDocuments(filter),
+        ]);
 
         return res.status(200).json({
             success: true,
-            count: appointments.length,
+            pagination: getPaginationMeta(total, page, limit),
             data: appointments,
         });
     } catch (error) {
@@ -127,6 +134,7 @@ const getAppointmentById = async (req, res) => {
 const getBusinessAppointments = async (req, res) => {
     try {
         const { businessId } = req.params;
+        const { page, limit, skip } = getPagination(req.query);
 
         const business = await Business.findById(businessId);
         if (!business) {
@@ -147,14 +155,21 @@ const getBusinessAppointments = async (req, res) => {
             });
         }
 
-        const appointments = await Appointment.find({ businessId })
-            .populate("userId", "name email phone")
-            .populate("serviceId", "serviceName estimatedDuration price")
-            .sort({ appointmentDate: 1 });
+        const filter = { businessId };
+
+        const [appointments, total] = await Promise.all([
+            Appointment.find(filter)
+                .populate("userId", "name email phone")
+                .populate("serviceId", "serviceName estimatedDuration price")
+                .sort({ appointmentDate: 1 })
+                .skip(skip)
+                .limit(limit),
+            Appointment.countDocuments(filter),
+        ]);
 
         return res.status(200).json({
             success: true,
-            count: appointments.length,
+            pagination: getPaginationMeta(total, page, limit),
             data: appointments,
         });
     } catch (error) {

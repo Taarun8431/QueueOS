@@ -81,6 +81,30 @@ const getbusiness = async (req, res) => {
     }
 }
 
+const getAllBusinesses = async (req, res) => {
+    try {
+        const businesses = await Business.find(
+            {
+                isActive: true
+            }
+        );
+        return res.status(200).json(
+            {
+                success: true,
+                count: businesses.length,
+                data: businesses,
+            }
+        );
+
+    }
+    catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+}
+
 const getBusinessById = async (req, res) => {
     try {
         const business = await Business.findOne({
@@ -218,4 +242,4 @@ const deleteBusiness = async (req, res) => {
 };
 
 
-module.exports = { createBusiness, getbusiness, getBusinessById, updateBusiness,deleteBusiness };
+module.exports = { createBusiness, getbusiness, getAllBusinesses, getBusinessById, updateBusiness,deleteBusiness };

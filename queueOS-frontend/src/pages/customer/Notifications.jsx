@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Bell, Clock, CalendarCheck, Info, CheckCheck, Trash2 } from 'lucide-react'
-import { DUMMY_NOTIFICATIONS } from '../../data/dummy'
+import { toast } from 'react-toastify'
 import PageHeader from '../../components/PageHeader'
+import api from '../../api'
 
 const TYPE_CONFIG = {
   queue:       { icon: Clock, color: 'bg-blue-100 text-blue-600' },
@@ -10,27 +11,40 @@ const TYPE_CONFIG = {
 }
 
 export default function CustomerNotifications() {
-  const [notes, setNotes] = useState(DUMMY_NOTIFICATIONS)
+  const [notes, setNotes] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const markAllRead = () => setNotes(prev => prev.map(n => ({ ...n, read: true })))
-  const deleteNote = (id) => setNotes(prev => prev.filter(n => n.id !== id))
-  const markRead = (id) => setNotes(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+  useEffect(() => {
+    api.get('/notifications')
+      .then(res => setNotes(res.data.data))
+      .catch(() => toast.error('Failed to load notifications'))
+      .finally(() => setLoading(false))
+  }, [])
 
-  const unread = notes.filter(n => !n.read).length
+  const markRead = async (id) => {
+    try {
+      await api.put(`/notifications/${id}/read`)
+      setNotes(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n))
+    } catch {}
+  }
+
+  const deleteNote = async (id) => {
+    try {
+      await api.delete(`/notifications/${id}`)
+      setNotes(prev => prev.filter(n => n._id !== id))
+    } catch { toast.error('Delete failed') }
+  }
+
+  const unread = notes.filter(n => !n.isRead).length
+
+  if (loading) return <p className="text-gray-400">Loading...</p>
 
   return (
     <div className="max-w-2xl">
       <PageHeader
         title="Notifications"
-        subtitle={unread > 0 ? `${unread} unread notification${unread > 1 ? 's' : ''}` : 'All caught up!'}
-        action={unread > 0 && (
-          <button onClick={markAllRead}
-            className="btn-secondary text-sm flex items-center gap-2">
-            <CheckCheck size={14} /> Mark all read
-          </button>
-        )}
+        subtitle={unread > 0 ? `${unread} unread` : 'All caught up!'}
       />
-
       {notes.length === 0 ? (
         <div className="card text-center py-16">
           <Bell size={48} className="text-gray-300 mx-auto mb-4" />
@@ -41,22 +55,16 @@ export default function CustomerNotifications() {
           {notes.map(n => {
             const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.system
             return (
-              <div key={n.id}
-                onClick={() => markRead(n.id)}
-                className={`card flex items-start gap-3 cursor-pointer transition-all ${
-                  !n.read ? 'border-l-4 border-l-primary-500' : ''}`}>
-                <div className={`p-2 rounded-xl flex-shrink-0 ${cfg.color}`}>
-                  <cfg.icon size={16} />
-                </div>
+              <div key={n._id} onClick={() => markRead(n._id)}
+                className={`card flex items-start gap-3 cursor-pointer ${!n.isRead ? 'border-l-4 border-l-primary-500' : ''}`}>
+                <div className={`p-2 rounded-xl flex-shrink-0 ${cfg.color}`}><cfg.icon size={16} /></div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${!n.read ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
-                    {n.message}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+                  <p className={`text-sm ${!n.isRead ? 'font-medium text-gray-900' : 'text-gray-600'}`}>{n.message}</p>
+                  <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString()}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {!n.read && <span className="w-2 h-2 bg-primary-500 rounded-full" />}
-                  <button onClick={e => { e.stopPropagation(); deleteNote(n.id) }}
+                  {!n.isRead && <span className="w-2 h-2 bg-primary-500 rounded-full" />}
+                  <button onClick={e => { e.stopPropagation(); deleteNote(n._id) }}
                     className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                     <Trash2 size={13} />
                   </button>

@@ -1,0 +1,1 @@
+const mongoose = require('mongoose'); const Token = require('./src/models/token.model.js'); mongoose.connect(process.env.MONGO_URL).then(async () => { const tokens = await Token.find({}); console.log('Tokens:', tokens); process.exit(0); }).catch(console.error);
