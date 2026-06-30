@@ -1,10 +1,13 @@
+const logger = require('../utils/logger');
+
 /**
  * Global Error Handler Middleware
  * Intercepts all errors thrown by endpoints and ensures the server 
  * doesn't crash, instead returning a clean JSON format.
  */
 const errorHandler = (err, req, res, next) => {
-    console.error(`[Global Error] ${err.message}`);
+    // Log the error using the centralized logger
+    logger.error(`[Global Error Handler] - ${req.method} ${req.originalUrl} - ${err.message}`, { stack: err.stack });
     
     // Default to 500 if no status code is provided
     const statusCode = err.statusCode || 500;

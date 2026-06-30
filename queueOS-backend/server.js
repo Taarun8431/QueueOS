@@ -1,4 +1,5 @@
 require("dotenv").config();
+const logger = require("./src/utils/logger");
 const http = require("http");
 const app = require("./src/app");
 const connectDB = require("./src/config/db");
@@ -24,62 +25,66 @@ io.adapter(createAdapter(pubClient, subClient));
 app.set("io", io);
 
 io.on("connection", (socket) => {
-  console.log("Socket connected:", socket.id);
-
+  logger.info(`Socket connected: ${socket.id}`);
  
   socket.on("joinQueueRoom", ({ businessId, serviceId }) => {
     const room = `queue:${businessId}:${serviceId}`;
     socket.join(room);
-    console.log(`Socket ${socket.id} joined room: ${room}`);
+    logger.info(`Socket ${socket.id} joined room: ${room}`);
   });
 
   socket.on("disconnect", () => {
-    console.log("Socket disconnected:", socket.id);
+    logger.info(`Socket disconnected: ${socket.id}`);
   });
 });
 
 async function startServer() {
   try {
     await connectDB();
+    logger.info("✔ Connected to MongoDB");
+    
     await connectRedis();
+    logger.info("✔ Connected to Redis");
 
     server.listen(PORT, () => {
-      console.log(`SERVER running on ${PORT}`);
+      logger.info(`🚀 SERVER running on port ${PORT}`);
     });
   } catch (error) {
-    console.error("Server startup error:", error);
+    logger.error("❌ Server startup error:", error);
     process.exit(1);
   }
 }
+
 startServer();
 
 // --- GRACEFUL SHUTDOWN LOGIC ---
 
 const gracefulShutdown = async (signal) => {
-  console.log(`\n[${signal}] Graceful shutdown initiated...`);
+  logger.warn(`\n[${signal}] Graceful shutdown initiated...`);
   
   // Stop accepting new HTTP requests
   server.close(async () => {
-    console.log("✔ HTTP server closed.");
+    logger.info("✔ HTTP server closed. Processing active requests...");
     try {
       const mongoose = require("mongoose");
       await mongoose.connection.close();
-      console.log("✔ MongoDB connection closed.");
+      logger.info("✔ MongoDB connection closed.");
       
       await pubClient.quit();
       await subClient.quit();
-      console.log("✔ Redis connections closed.");
+      logger.info("✔ Redis connections closed.");
       
+      logger.info("✔ Server shutdown sequence complete. Exiting.");
       process.exit(0);
     } catch (err) {
-      console.error("❌ Error during shutdown:", err);
+      logger.error("❌ Error during shutdown:", err);
       process.exit(1);
     }
   });
 
   // Force shutdown if requests hang for more than 10 seconds
   setTimeout(() => {
-    console.error("❌ Forcefully shutting down after 10s timeout");
+    logger.error("❌ Forcefully shutting down after 10s timeout due to hanging connections.");
     process.exit(1);
   }, 10000);
 };
@@ -90,12 +95,12 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
 // Unexpected Node.js Crashes
 process.on("uncaughtException", (err) => {
-  console.error("❌ UNCAUGHT EXCEPTION! Shutting down...", err);
+  logger.error("❌ UNCAUGHT EXCEPTION! Shutting down...", { stack: err.stack });
   process.exit(1);
 });
 
 process.on("unhandledRejection", (err) => {
-  console.error("❌ UNHANDLED REJECTION! Shutting down...", err);
+  logger.error("❌ UNHANDLED REJECTION! Shutting down...", { stack: err.stack });
   server.close(() => {
     process.exit(1);
   });
