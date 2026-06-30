@@ -1,5 +1,5 @@
-# Use an official Node runtime as a parent image
-FROM node:18-alpine
+# Use an official Node runtime as a parent image (Node 22 is required for Mongoose 9+)
+FROM node:22-alpine
 
 # Set the working directory inside the container
 WORKDIR /usr/src/app
