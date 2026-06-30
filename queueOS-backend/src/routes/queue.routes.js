@@ -41,8 +41,7 @@ router.get(
 router.get(
   "/current/:businessId/:serviceId",
   protect,
-  authorizeRoles("staff", "owner", "admin"),
-  verifyStaffBusiness,
+  authorizeRoles("staff", "owner", "admin", "customer"),
   getCurrentQueue
 );
 
@@ -95,6 +94,14 @@ router.post(
   "/predict-wait-time",
   protect,
   predictWaitTime
+);
+
+router.put(
+  "/pause/:serviceId",
+  protect,
+  authorizeRoles("staff", "owner", "admin"),
+  verifyStaffBusiness,
+  require("../controllers/queue.controller").toggleQueuePause
 );
 
 module.exports = router;

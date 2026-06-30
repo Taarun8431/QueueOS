@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: queueos_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  # Redis In-Memory Cache & PubSub
+  redis:
+    image: redis:7.0-alpine
+    container_name: queueos_redis
+    # Important: Set noeviction as per project requirements
+    command: redis-server --maxmemory-policy noeviction --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Python FastAPI Machine Learning Server
+  queueos-ml:
+    build: 
+      context: ./queueOS-ml
+      dockerfile: Dockerfile
+    container_name: queueos_ml
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # Node.js Backend API
+  queueos-backend:
+    build: 
+      context: ./queueOS-backend
+      dockerfile: Dockerfile
+    container_name: queueos_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URL=mongodb://mongodb:27017/queueOS
+      - REDIS_URL=redis://redis:6379
+      - ML_API_URL=http://queueos-ml:8000
+      - NODE_ENV=development
+      # Note: JWT secrets, Twilio keys, etc. can be passed via a .env file or GitHub Secrets in prod
+    depends_on:
+      - mongodb
+      - redis
+      - queueos-ml
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+  redis_data:

@@ -22,25 +22,40 @@ const expireQueueKey = async (queueKey) => {
 };
 
 const loadWaitingTokensToRedis = async (queueKey, businessId, serviceId) => {
-    const waitingTokens = await Token.find({
-        businessId,
-        serviceId,
-        status: "waiting",
-    })
-        .sort({ joinedAt: 1 })
-        .limit(QUEUE_LOAD_LIMIT)
-        .select("_id")
-        .lean();
-
-    if (!waitingTokens.length) {
+    // 1. Try to grab a Redis lock (expires in 10 seconds to prevent deadlocks)
+    const lockKey = `lock:${queueKey}`;
+    const acquiredLock = await redisClient.set(lockKey, "1", { NX: true, EX: 10 });
+    
+    // If another request already has the lock, they are currently loading the queue.
+    // We just return 0 to let the current request safely fall back to checking MongoDB directly.
+    if (!acquiredLock) {
         return 0;
     }
 
-    const tokenIds = waitingTokens.map((token) => token._id.toString());
-    await redisClient.rPush(queueKey, tokenIds);
-    await expireQueueKey(queueKey);
+    try {
+        const waitingTokens = await Token.find({
+            businessId,
+            serviceId,
+            status: "waiting",
+        })
+            .sort({ joinedAt: 1 })
+            .limit(QUEUE_LOAD_LIMIT)
+            .select("_id")
+            .lean();
 
-    return tokenIds.length;
+        if (!waitingTokens.length) {
+            return 0;
+        }
+
+        const tokenIds = waitingTokens.map((token) => token._id.toString());
+        await redisClient.rPush(queueKey, tokenIds);
+        await expireQueueKey(queueKey);
+
+        return tokenIds.length;
+    } finally {
+        // Release the lock when done
+        await redisClient.del(lockKey);
+    }
 };
 
 const popNextWaitingToken = async (queueKey, businessId, serviceId) => {
@@ -97,23 +112,49 @@ const generateToken = async (req, res) => {
                 message: "Service not found for this business",
             });
         }
-        const lastToken = await Token.findOne({ businessId, serviceId }).sort({
-            createdAt: -1,
-        });
 
-        let tokenSequence = 1;
-        if (lastToken) {
-            if (lastToken.tokenSequence) {
-                tokenSequence = lastToken.tokenSequence + 1;
-            } else if (typeof lastToken.tokenNumber === 'number' || !isNaN(lastToken.tokenNumber)) {
-                tokenSequence = Number(lastToken.tokenNumber) + 1;
-            } else {
-                const parts = lastToken.tokenNumber.split('-');
-                if (parts.length > 1 && !isNaN(parts[1])) {
-                    tokenSequence = parseInt(parts[1]) + 1;
-                } else {
-                    tokenSequence = 2;
+        if (service.isQueuePaused) {
+            return res.status(403).json({
+                success: false,
+                message: "This service queue is currently paused. No new tokens can be generated.",
+            });
+        }
+        const seqKey = `token_seq:${businessId}:${serviceId}`;
+        let tokenSequence = await redisClient.incr(seqKey);
+
+        // If this is the very first time (it incremented from 0 to 1), 
+        // we need to safely sync the maximum token number from MongoDB.
+        if (tokenSequence === 1) {
+            const lockKey = `lock:token_seq:${businessId}:${serviceId}`;
+            const acquiredLock = await redisClient.set(lockKey, "1", { NX: true, EX: 5 });
+            
+            if (acquiredLock) {
+                try {
+                    const lastToken = await Token.findOne({ businessId, serviceId }).sort({ createdAt: -1 });
+                    if (lastToken) {
+                        let maxSeq = 0;
+                        if (lastToken.tokenSequence) {
+                            maxSeq = lastToken.tokenSequence;
+                        } else if (lastToken.tokenNumber) {
+                            const parts = lastToken.tokenNumber.split('-');
+                            if (parts.length > 1 && !isNaN(parts[1])) {
+                                maxSeq = parseInt(parts[1]);
+                            }
+                        }
+                        if (maxSeq > 0) {
+                            // Current user gets maxSeq + 1, so we set the Redis counter to maxSeq + 1
+                            await redisClient.set(seqKey, maxSeq + 1);
+                            tokenSequence = maxSeq + 1;
+                        }
+                    }
+                } finally {
+                    await redisClient.del(lockKey);
                 }
+            } else {
+                // If we didn't get the lock, someone else is initializing the sequence.
+                // Wait briefly and then fetch a new incremented sequence.
+                await new Promise(resolve => setTimeout(resolve, 200));
+                tokenSequence = await redisClient.incr(seqKey);
             }
         }
 
@@ -256,6 +297,19 @@ const getCurrentQueue = async (req, res) => {
     try {
         const { businessId, serviceId } = req.params;
 
+        const cacheKey = `cache:queue:${businessId}:${serviceId}`;
+        const cachedData = await redisClient.get(cacheKey);
+        
+        if (cachedData) {
+            const tokens = JSON.parse(cachedData);
+            return res.status(200).json({
+                success: true,
+                count: tokens.length,
+                data: tokens,
+                cached: true
+            });
+        }
+
         let query = { businessId, status: { $in: ["waiting", "called", "cancelled", "no_show", "served"] } };
         if (serviceId !== "all") {
             query.serviceId = serviceId;
@@ -263,10 +317,14 @@ const getCurrentQueue = async (req, res) => {
 
         const tokens = await Token.find(query).sort({ joinedAt: 1 });
 
+        // Cache for 5 seconds to prevent Thundering Herd read spikes
+        await redisClient.setEx(cacheKey, 5, JSON.stringify(tokens));
+
         return res.status(200).json({
             success: true,
             count: tokens.length,
             data: tokens,
+            cached: false
         });
     } catch (error) {
         return res.status(500).json({
@@ -675,7 +733,6 @@ const cancelToken = async (req, res) => {
     }
 };
 
-
 const predictWaitTime = async (req, res) => {
     try {
         const {
@@ -699,23 +756,35 @@ const predictWaitTime = async (req, res) => {
         ) {
             return res.status(400).json({
                 success: false,
-                message: "All fields are required: businessCategory, serviceType, queueLength, hourOfDay, dayOfWeek, avgServiceDuration, staffCount",
+                message: "All fields are required",
             });
         }
 
-        const response = await axios.post(`${ML_API_URL}/predict`, {
-            businessCategory,
-            serviceType,
-            queueLength,
-            hourOfDay,
-            dayOfWeek,
-            avgServiceDuration,
-            staffCount,
-        });
+        let predictedWaitTime;
+        let isFallback = false;
+
+        try {
+            const response = await axios.post(`${ML_API_URL}/predict`, {
+                businessCategory,
+                serviceType,
+                queueLength,
+                hourOfDay,
+                dayOfWeek,
+                avgServiceDuration,
+                staffCount,
+            }, { timeout: 3000 });
+            predictedWaitTime = response.data.PredictionWaitTime;
+        } catch (mlError) {
+            console.error("ML Service Error - Using Fallback:", mlError.message);
+            const activeStaff = staffCount > 0 ? staffCount : 1;
+            predictedWaitTime = queueLength * (avgServiceDuration / activeStaff);
+            isFallback = true;
+        }
 
         return res.status(200).json({
             success: true,
-            predictedWaitTime: response.data.PredictionWaitTime,
+            predictedWaitTime,
+            isFallback,
         });
     } catch (error) {
         return res.status(500).json({
@@ -744,6 +813,37 @@ const getMyTokens = async (req, res) => {
     }
 };
 
+const toggleQueuePause = async (req, res) => {
+    try {
+        const { serviceId } = req.params;
+        const { isPaused } = req.body;
+
+        const service = await Service.findOne({ _id: serviceId, businessId: req.staffAssignment.businessId });
+        if (!service) {
+            return res.status(404).json({ success: false, message: "Service not found for your business" });
+        }
+
+        service.isQueuePaused = isPaused;
+        await service.save();
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(`queue:${service.businessId}:all`).emit("queuePaused", {
+                serviceId,
+                isPaused
+            });
+        }
+
+        return res.status(200).json({ 
+            success: true, 
+            message: `Queue is now ${isPaused ? 'paused' : 'active'}`, 
+            data: service 
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     generateToken,
     getQueuePosition,
@@ -756,4 +856,5 @@ module.exports = {
     recallToken,
     callSpecificToken,
     getMyTokens,
+    toggleQueuePause,
 };

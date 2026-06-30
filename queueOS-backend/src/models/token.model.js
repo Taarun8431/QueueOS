@@ -57,4 +57,8 @@ const tokenSchema = new mongoose.Schema(
   }
 );
 
+tokenSchema.index({ businessId: 1, serviceId: 1, status: 1, joinedAt: 1 }); 
+tokenSchema.index({ businessId: 1, serviceId: 1, createdAt: -1 }); 
+tokenSchema.index({ customerId: 1, createdAt: -1 }); 
+
 module.exports = mongoose.model("Token", tokenSchema);

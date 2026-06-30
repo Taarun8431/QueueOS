@@ -46,6 +46,10 @@ const appointmentSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+// Indexes for high-performance queries
+appointmentSchema.index({ businessId: 1, serviceId: 1, appointmentDate: 1, status: 1 }); // For fetching business schedule
+appointmentSchema.index({ userId: 1, status: 1 }); // For customers fetching their own appointments
+
 module.exports = mongoose.model(
     "Appointment",
     appointmentSchema

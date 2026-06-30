@@ -36,6 +36,11 @@ const serviceSchema = new mongoose.Schema(
             default: true,
         },
 
+        isQueuePaused: {
+            type: Boolean,
+            default: false,
+        },
+
         isDeleted: {
             type: Boolean,
             default: false,

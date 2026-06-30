@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { authLimiter, generalLimiter } = require("./middlewares/rateLimiter.middleware");
+const { errorHandler, notFoundHandler } = require("./middlewares/error.middleware");
 
 const app = express();
 
@@ -36,7 +37,10 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/staff", staffRoutes);
 
+// Catch 404 and forward to error handler
+app.use(notFoundHandler);
+
+// Global Error Handler (must be the last middleware)
+app.use(errorHandler);
+
 module.exports = app;
-
-
-
