@@ -1,0 +1,51 @@
+# Vercel Speed Insights Installation Report
+
+## Summary
+Successfully installed and configured Vercel Speed Insights for the QueueOS frontend React/Vite application.
+
+## Changes Made
+
+### 1. Package Installation
+- Installed `@vercel/speed-insights` version ^2.0.0
+- Used npm as the package manager (consistent with project setup)
+- Package added to dependencies in package.json
+
+### 2. Code Integration
+**Modified: queueOS-frontend/src/main.jsx**
+- Added import statement: `import { SpeedInsights } from '@vercel/speed-insights/react'`
+- Added `<SpeedInsights />` component inside the AuthProvider context, alongside ToastContainer
+- Placement ensures Speed Insights tracks all authenticated and public routes
+
+### 3. Files Modified
+- `package.json` - Added @vercel/speed-insights dependency
+- `package-lock.json` - Updated with new dependency tree (171 packages added)
+- `src/main.jsx` - Added SpeedInsights import and component
+
+## Implementation Details
+
+### Framework
+This is a React application using Vite as the build tool. Following Vercel's official documentation, I used the React-specific entry point (`@vercel/speed-insights/react`) for optimal integration.
+
+### Component Placement
+The SpeedInsights component was added to the main application entry point (main.jsx) within the React.StrictMode and BrowserRouter context. This ensures:
+- Speed Insights tracks all routes and navigation
+- The component initializes early in the application lifecycle
+- Metrics are collected for both authenticated and public pages
+
+### Build Verification
+- Successfully ran `npm run build` with no errors
+- Build output: 439.41 kB main bundle (129.74 kB gzipped)
+- All 1599 modules transformed successfully
+
+## Next Steps for Deployment
+
+To enable Speed Insights data collection:
+1. Deploy this code to Vercel using `vercel deploy`
+2. Enable Speed Insights in the Vercel dashboard for this project
+3. After deployment, Vercel will add necessary routes at `/_vercel/speed-insights/*`
+4. Performance metrics will appear in the dashboard within a few days after users visit the site
+
+## Notes
+- The SpeedInsights component is lightweight and won't affect application performance
+- No additional configuration is required in the code
+- Metrics collection happens automatically once deployed to Vercel with Speed Insights enabled
