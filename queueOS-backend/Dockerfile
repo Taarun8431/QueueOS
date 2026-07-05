@@ -6,6 +6,7 @@ WORKDIR /usr/src/app
 
 # Copy package.json and package-lock.json first to leverage Docker cache
 COPY package*.json ./
+COPY prisma ./prisma/
 
 # Install dependencies
 RUN npm install --production
