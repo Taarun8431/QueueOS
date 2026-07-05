@@ -1,5 +1,8 @@
-# Use an official Node runtime as a parent image (Node 22 is required for Mongoose 9+)
+# Use an official Node runtime as a parent image
 FROM node:22-alpine
+
+# Install openssl for Prisma engine compatibility
+RUN apk update && apk add --no-cache openssl
 
 # Set the working directory inside the container
 WORKDIR /usr/src/app
