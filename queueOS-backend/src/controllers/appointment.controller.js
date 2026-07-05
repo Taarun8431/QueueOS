@@ -1,7 +1,6 @@
-const Appointment = require("../models/appointment.model");
-const Business = require("../models/business.model");
-const Service = require("../models/services.model");
+const prisma = require("../config/prisma");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
+const { client: redisClient } = require("../config/redis");
 
 const createAppointment = async (req, res) => {
     try {
@@ -14,7 +13,10 @@ const createAppointment = async (req, res) => {
             });
         }
 
-        const business = await Business.findOne({ _id: businessId, isActive: true });
+        const business = await prisma.business.findFirst({
+            where: { id: businessId, isActive: true }
+        });
+        
         if (!business) {
             return res.status(404).json({
                 success: false,
@@ -22,8 +24,10 @@ const createAppointment = async (req, res) => {
             });
         }
 
-        // Fix: was using businessId instead of serviceId for _id lookup
-        const service = await Service.findOne({ _id: serviceId, businessId, isActive: true });
+        const service = await prisma.service.findFirst({
+            where: { id: serviceId, businessId, isActive: true }
+        });
+        
         if (!service) {
             return res.status(404).json({
                 success: false,
@@ -31,14 +35,16 @@ const createAppointment = async (req, res) => {
             });
         }
 
-        // Check if this slot is already booked
-        const existingAppointment = await Appointment.findOne({
-            businessId,
-            serviceId,
-            appointmentDate,
-            appointmentTime,
-            status: "scheduled",
+        const existingAppointment = await prisma.appointment.findFirst({
+            where: {
+                businessId,
+                serviceId,
+                appointmentDate: new Date(appointmentDate),
+                appointmentTime,
+                status: "scheduled",
+            }
         });
+        
         if (existingAppointment) {
             return res.status(409).json({
                 success: false,
@@ -46,13 +52,15 @@ const createAppointment = async (req, res) => {
             });
         }
 
-        // Fix: was returning the model reference instead of creating a document
-        const newAppointment = await Appointment.create({
-            userId: req.user.userId,
-            businessId,
-            serviceId,
-            appointmentDate,
-            appointmentTime,
+        const newAppointment = await prisma.appointment.create({
+            data: {
+                userId: req.user.userId,
+                businessId,
+                serviceId,
+                appointmentDate: new Date(appointmentDate),
+                appointmentTime,
+                status: "scheduled",
+            }
         });
 
         return res.status(201).json({
@@ -71,16 +79,23 @@ const createAppointment = async (req, res) => {
 const getMyAppointments = async (req, res) => {
     try {
         const { page, limit, skip } = getPagination(req.query);
-        const filter = { userId: req.user.userId };
 
         const [appointments, total] = await Promise.all([
-            Appointment.find(filter)
-                .populate("businessId", "businessName category address phone")
-                .populate("serviceId", "serviceName estimatedDuration price")
-                .sort({ appointmentDate: 1 })
-                .skip(skip)
-                .limit(limit),
-            Appointment.countDocuments(filter),
+            prisma.appointment.findMany({
+                where: { userId: req.user.userId },
+                include: {
+                    business: {
+                        select: { businessName: true, category: true, address: true, phone: true }
+                    },
+                    service: {
+                        select: { serviceName: true, estimatedDuration: true, price: true }
+                    }
+                },
+                orderBy: { appointmentDate: 'asc' },
+                skip,
+                take: limit
+            }),
+            prisma.appointment.count({ where: { userId: req.user.userId } }),
         ]);
 
         return res.status(200).json({
@@ -98,9 +113,17 @@ const getMyAppointments = async (req, res) => {
 
 const getAppointmentById = async (req, res) => {
     try {
-        const appointment = await Appointment.findById(req.params.id)
-            .populate("businessId", "businessName category address phone")
-            .populate("serviceId", "serviceName estimatedDuration price");
+        const appointment = await prisma.appointment.findUnique({
+            where: { id: req.params.id },
+            include: {
+                business: {
+                    select: { businessName: true, category: true, address: true, phone: true }
+                },
+                service: {
+                    select: { serviceName: true, estimatedDuration: true, price: true }
+                }
+            }
+        });
 
         if (!appointment) {
             return res.status(404).json({
@@ -110,7 +133,7 @@ const getAppointmentById = async (req, res) => {
         }
 
         if (
-            appointment.userId.toString() !== req.user.userId &&
+            appointment.userId !== req.user.userId &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -136,7 +159,7 @@ const getBusinessAppointments = async (req, res) => {
         const { businessId } = req.params;
         const { page, limit, skip } = getPagination(req.query);
 
-        const business = await Business.findById(businessId);
+        const business = await prisma.business.findUnique({ where: { id: businessId } });
         if (!business) {
             return res.status(404).json({
                 success: false,
@@ -145,7 +168,7 @@ const getBusinessAppointments = async (req, res) => {
         }
 
         if (
-            business.ownerId.toString() !== req.user.userId &&
+            business.ownerId !== req.user.userId &&
             req.user.role !== "admin" &&
             req.user.role !== "staff"
         ) {
@@ -158,13 +181,21 @@ const getBusinessAppointments = async (req, res) => {
         const filter = { businessId };
 
         const [appointments, total] = await Promise.all([
-            Appointment.find(filter)
-                .populate("userId", "name email phone")
-                .populate("serviceId", "serviceName estimatedDuration price")
-                .sort({ appointmentDate: 1 })
-                .skip(skip)
-                .limit(limit),
-            Appointment.countDocuments(filter),
+            prisma.appointment.findMany({
+                where: filter,
+                include: {
+                    user: {
+                        select: { name: true, email: true, phone: true }
+                    },
+                    service: {
+                        select: { serviceName: true, estimatedDuration: true, price: true }
+                    }
+                },
+                orderBy: { appointmentDate: 'asc' },
+                skip,
+                take: limit
+            }),
+            prisma.appointment.count({ where: filter }),
         ]);
 
         return res.status(200).json({
@@ -182,7 +213,9 @@ const getBusinessAppointments = async (req, res) => {
 
 const cancelAppointment = async (req, res) => {
     try {
-        const appointment = await Appointment.findById(req.params.id);
+        const appointment = await prisma.appointment.findUnique({
+            where: { id: req.params.id }
+        });
 
         if (!appointment) {
             return res.status(404).json({
@@ -192,7 +225,7 @@ const cancelAppointment = async (req, res) => {
         }
 
         if (
-            appointment.userId.toString() !== req.user.userId &&
+            appointment.userId !== req.user.userId &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -201,13 +234,15 @@ const cancelAppointment = async (req, res) => {
             });
         }
 
-        appointment.status = "cancelled";
-        await appointment.save();
+        const updated = await prisma.appointment.update({
+            where: { id: appointment.id },
+            data: { status: "cancelled" }
+        });
 
         return res.status(200).json({
             success: true,
             message: "Appointment cancelled successfully",
-            data: appointment,
+            data: updated,
         });
     } catch (error) {
         return res.status(500).json({
@@ -228,7 +263,9 @@ const rescheduleAppointment = async (req, res) => {
             });
         }
 
-        const appointment = await Appointment.findById(req.params.id);
+        const appointment = await prisma.appointment.findUnique({
+            where: { id: req.params.id }
+        });
 
         if (!appointment) {
             return res.status(404).json({
@@ -238,7 +275,7 @@ const rescheduleAppointment = async (req, res) => {
         }
 
         if (
-            appointment.userId.toString() !== req.user.userId &&
+            appointment.userId !== req.user.userId &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -247,14 +284,15 @@ const rescheduleAppointment = async (req, res) => {
             });
         }
 
-        // Check slot conflict excluding current appointment
-        const slotExists = await Appointment.findOne({
-            businessId: appointment.businessId,
-            serviceId: appointment.serviceId,
-            appointmentDate,
-            appointmentTime,
-            status: "scheduled",
-            _id: { $ne: appointment._id },
+        const slotExists = await prisma.appointment.findFirst({
+            where: {
+                businessId: appointment.businessId,
+                serviceId: appointment.serviceId,
+                appointmentDate: new Date(appointmentDate),
+                appointmentTime,
+                status: "scheduled",
+                id: { not: appointment.id },
+            }
         });
 
         if (slotExists) {
@@ -264,15 +302,110 @@ const rescheduleAppointment = async (req, res) => {
             });
         }
 
-        appointment.appointmentDate = appointmentDate;
-        appointment.appointmentTime = appointmentTime;
-        appointment.status = "rescheduled";
-        await appointment.save();
+        const updated = await prisma.appointment.update({
+            where: { id: appointment.id },
+            data: {
+                appointmentDate: new Date(appointmentDate),
+                appointmentTime,
+                status: "rescheduled"
+            }
+        });
 
         return res.status(200).json({
             success: true,
             message: "Appointment rescheduled successfully",
-            data: appointment,
+            data: updated,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+const checkInAppointment = async (req, res) => {
+    try {
+        const appointment = await prisma.appointment.findUnique({
+            where: { id: req.params.id },
+            include: { service: true }
+        });
+
+        if (!appointment) {
+            return res.status(404).json({
+                success: false,
+                message: "Appointment not found",
+            });
+        }
+
+        if (
+            appointment.userId !== req.user.userId &&
+            req.user.role !== "admin" &&
+            req.user.role !== "staff"
+        ) {
+            return res.status(403).json({
+                success: false,
+                message: "Not authorized to check-in this appointment",
+            });
+        }
+
+        if (appointment.status !== "scheduled") {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot check-in. Current status is ${appointment.status}`,
+            });
+        }
+
+        const businessId = appointment.businessId;
+        const serviceId = appointment.serviceId;
+        const seqKey = `token_seq:${businessId}:${serviceId}`;
+        let tokenSequence = await redisClient.incr(seqKey);
+
+        const prefix = appointment.service.serviceName ? appointment.service.serviceName.charAt(0).toUpperCase() : "T";
+        const tokenNumber = `A-${prefix}-${tokenSequence}`;
+
+        const token = await prisma.token.create({
+            data: {
+                tokenNumber,
+                tokenSequence,
+                customerId: appointment.userId,
+                businessId,
+                serviceId,
+                status: "waiting"
+            }
+        });
+
+        const queueKey = `queue:${businessId}:${serviceId}`;
+        await redisClient.lPush(queueKey, token.id);
+
+        const updatedAppointment = await prisma.appointment.update({
+            where: { id: appointment.id },
+            data: { status: "checked_in" }
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(queueKey).emit("queueUpdated", {
+                event: "tokenJoined",
+                businessId,
+                serviceId,
+                token,
+            });
+            io.to(`queue:${businessId}:all`).emit("queueUpdated", {
+                event: "tokenJoined",
+                businessId,
+                serviceId,
+                token,
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Successfully checked in. You have been placed at the front of the queue.",
+            data: {
+                appointment: updatedAppointment,
+                token
+            },
         });
     } catch (error) {
         return res.status(500).json({
@@ -289,4 +422,5 @@ module.exports = {
     getBusinessAppointments,
     cancelAppointment,
     rescheduleAppointment,
+    checkInAppointment,
 };

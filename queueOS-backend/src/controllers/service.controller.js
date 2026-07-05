@@ -1,66 +1,59 @@
-const Service = require("../models/services.model");
-const Business = require("../models/business.model");
+const prisma = require("../config/prisma");
 
 const createService = async (req, res) => {
     try {
-        const
-            {
-                serviceName,
-                businessId,
-                description,
-                estimatedDuration,
-                price,
-            } = req.body;
+        const {
+            serviceName,
+            businessId,
+            description,
+            estimatedDuration,
+            price,
+        } = req.body;
 
         if (!serviceName || !businessId || estimatedDuration === undefined || price === undefined) {
-            return res.status(400).json(
-                {
-                    success: "false",
-                    message: "Required fields missing"
-                }
-            );
+            return res.status(400).json({
+                success: "false",
+                message: "Required fields missing"
+            });
         }
 
-        const business = await Business.findOne(
-            {
-                _id: businessId,
+        const business = await prisma.business.findFirst({
+            where: {
+                id: businessId,
                 isActive: true,
             }
-        );
+        });
 
         if (!business) {
-            return res.status(404).json(
-                {
-                    success: false,
-                    message: "Business not found",
-                }
-            )
+            return res.status(404).json({
+                success: false,
+                message: "Business not found",
+            });
         }
-        if (business.ownerId.toString() !== req.user.userId && req.user.role !== "admin") {
-            return res.status(403).json(
-                {
-                    success: false,
-                    message: "Not authorized to access",
-                }
-            );
+        
+        if (business.ownerId !== req.user.userId && req.user.role !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Not authorized to access",
+            });
         }
-        const service = await Service.create(
-            {
+        
+        const service = await prisma.service.create({
+            data: {
                 serviceName,
                 businessId,
                 description,
                 estimatedDuration,
                 price,
             }
-
-        )
+        });
+        
         return res.status(201).json({
             success: true,
             message: "Service created successfully",
             data: service,
         });
-    }
-    catch (error) {
+    } catch (error) {
         return res.status(500).json({
             success: false,
             message: error.message,
@@ -70,9 +63,11 @@ const createService = async (req, res) => {
 
 const getServicesByBusiness = async (req, res) => {
     try {
-        const services = await Service.find({
-            businessId: req.params.businessId,
-            isDeleted: false,
+        const services = await prisma.service.findMany({
+            where: {
+                businessId: req.params.businessId,
+                isDeleted: false,
+            }
         });
 
         return res.status(200).json({
@@ -90,9 +85,11 @@ const getServicesByBusiness = async (req, res) => {
 
 const getServiceById = async (req, res) => {
     try {
-        const service = await Service.findOne({
-            _id: req.params.id,
-            isDeleted: false,
+        const service = await prisma.service.findFirst({
+            where: {
+                id: req.params.id,
+                isDeleted: false,
+            }
         });
 
         if (!service) {
@@ -116,9 +113,11 @@ const getServiceById = async (req, res) => {
 
 const updateService = async (req, res) => {
     try {
-        const service = await Service.findOne({
-            _id: req.params.id,
-            isDeleted: false,
+        const service = await prisma.service.findFirst({
+            where: {
+                id: req.params.id,
+                isDeleted: false,
+            }
         });
 
         if (!service) {
@@ -128,10 +127,12 @@ const updateService = async (req, res) => {
             });
         }
 
-        const business = await Business.findById(service.businessId);
+        const business = await prisma.business.findUnique({
+            where: { id: service.businessId }
+        });
 
         if (
-            business.ownerId.toString() !== req.user.userId &&
+            business.ownerId !== req.user.userId &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -142,24 +143,16 @@ const updateService = async (req, res) => {
 
         const { serviceName, description, estimatedDuration, price } = req.body;
 
-        const allowedUpdates = {
-            serviceName,
-            description,
-            estimatedDuration,
-            price,
-        };
+        const updateData = {};
+        if (serviceName) updateData.serviceName = serviceName;
+        if (description) updateData.description = description;
+        if (estimatedDuration !== undefined) updateData.estimatedDuration = estimatedDuration;
+        if (price !== undefined) updateData.price = price;
 
-        Object.keys(allowedUpdates).forEach((key) => {
-            if (allowedUpdates[key] === undefined) {
-                delete allowedUpdates[key];
-            }
+        const updatedService = await prisma.service.update({
+            where: { id: req.params.id },
+            data: updateData
         });
-
-        const updatedService = await Service.findByIdAndUpdate(
-            req.params.id,
-            allowedUpdates,
-            { new: true, runValidators: true }
-        );
 
         return res.status(200).json({
             success: true,
@@ -176,9 +169,11 @@ const updateService = async (req, res) => {
 
 const deleteService = async (req, res) => {
     try {
-        const service = await Service.findOne({
-            _id: req.params.id,
-            isDeleted: false,
+        const service = await prisma.service.findFirst({
+            where: {
+                id: req.params.id,
+                isDeleted: false,
+            }
         });
 
         if (!service) {
@@ -188,10 +183,12 @@ const deleteService = async (req, res) => {
             });
         }
 
-        const business = await Business.findById(service.businessId);
+        const business = await prisma.business.findUnique({
+            where: { id: service.businessId }
+        });
 
         if (
-            business.ownerId.toString() !== req.user.userId &&
+            business.ownerId !== req.user.userId &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -200,8 +197,10 @@ const deleteService = async (req, res) => {
             });
         }
 
-        service.isDeleted = true;
-        await service.save();
+        await prisma.service.update({
+            where: { id: req.params.id },
+            data: { isDeleted: true }
+        });
 
         return res.status(200).json({
             success: true,

@@ -1,8 +1,5 @@
 const axios = require("axios");
-const Token = require("../models/token.model");
-const Business = require("../models/business.model");
-const Service = require("../models/services.model");
-const Appointment = require("../models/appointment.model");
+const prisma = require("../config/prisma");
 const { client: redisClient } = require("../config/redis");
 const notificationQueue = require("../config/queue");
 
@@ -27,27 +24,28 @@ const loadWaitingTokensToRedis = async (queueKey, businessId, serviceId) => {
     const acquiredLock = await redisClient.set(lockKey, "1", { NX: true, EX: 10 });
     
     // If another request already has the lock, they are currently loading the queue.
-    // We just return 0 to let the current request safely fall back to checking MongoDB directly.
+    // We just return 0 to let the current request safely fall back to checking directly.
     if (!acquiredLock) {
         return 0;
     }
 
     try {
-        const waitingTokens = await Token.find({
-            businessId,
-            serviceId,
-            status: "waiting",
-        })
-            .sort({ joinedAt: 1 })
-            .limit(QUEUE_LOAD_LIMIT)
-            .select("_id")
-            .lean();
+        const waitingTokens = await prisma.token.findMany({
+            where: {
+                businessId,
+                serviceId,
+                status: "waiting",
+            },
+            orderBy: { joinedAt: 'asc' },
+            take: QUEUE_LOAD_LIMIT,
+            select: { id: true }
+        });
 
         if (!waitingTokens.length) {
             return 0;
         }
 
-        const tokenIds = waitingTokens.map((token) => token._id.toString());
+        const tokenIds = waitingTokens.map((token) => token.id);
         await redisClient.rPush(queueKey, tokenIds);
         await expireQueueKey(queueKey);
 
@@ -62,11 +60,13 @@ const popNextWaitingToken = async (queueKey, businessId, serviceId) => {
     let tokenId = await redisClient.lPop(queueKey);
 
     while (tokenId) {
-        const token = await Token.findOne({
-            _id: tokenId,
-            businessId,
-            serviceId,
-            status: "waiting",
+        const token = await prisma.token.findFirst({
+            where: {
+                id: tokenId,
+                businessId,
+                serviceId,
+                status: "waiting",
+            }
         });
 
         if (token) {
@@ -89,9 +89,12 @@ const generateToken = async (req, res) => {
                 message: "Business ID and Service ID are required",
             });
         }
-        const business = await Business.findOne({
-            _id: businessId,
-            isActive: true,
+        
+        const business = await prisma.business.findFirst({
+            where: {
+                id: businessId,
+                isActive: true,
+            }
         });
 
         if (!business) {
@@ -100,10 +103,13 @@ const generateToken = async (req, res) => {
                 message: "Business not found",
             });
         }
-        const service = await Service.findOne({
-            _id: serviceId,
-            businessId,
-            isActive: true,
+        
+        const service = await prisma.service.findFirst({
+            where: {
+                id: serviceId,
+                businessId,
+                isActive: true,
+            }
         });
 
         if (!service) {
@@ -119,18 +125,20 @@ const generateToken = async (req, res) => {
                 message: "This service queue is currently paused. No new tokens can be generated.",
             });
         }
+        
         const seqKey = `token_seq:${businessId}:${serviceId}`;
         let tokenSequence = await redisClient.incr(seqKey);
 
-        // If this is the very first time (it incremented from 0 to 1), 
-        // we need to safely sync the maximum token number from MongoDB.
         if (tokenSequence === 1) {
             const lockKey = `lock:token_seq:${businessId}:${serviceId}`;
             const acquiredLock = await redisClient.set(lockKey, "1", { NX: true, EX: 5 });
             
             if (acquiredLock) {
                 try {
-                    const lastToken = await Token.findOne({ businessId, serviceId }).sort({ createdAt: -1 });
+                    const lastToken = await prisma.token.findFirst({
+                        where: { businessId, serviceId },
+                        orderBy: { createdAt: 'desc' }
+                    });
                     if (lastToken) {
                         let maxSeq = 0;
                         if (lastToken.tokenSequence) {
@@ -142,7 +150,6 @@ const generateToken = async (req, res) => {
                             }
                         }
                         if (maxSeq > 0) {
-                            // Current user gets maxSeq + 1, so we set the Redis counter to maxSeq + 1
                             await redisClient.set(seqKey, maxSeq + 1);
                             tokenSequence = maxSeq + 1;
                         }
@@ -151,8 +158,6 @@ const generateToken = async (req, res) => {
                     await redisClient.del(lockKey);
                 }
             } else {
-                // If we didn't get the lock, someone else is initializing the sequence.
-                // Wait briefly and then fetch a new incremented sequence.
                 await new Promise(resolve => setTimeout(resolve, 200));
                 tokenSequence = await redisClient.incr(seqKey);
             }
@@ -161,19 +166,21 @@ const generateToken = async (req, res) => {
         const prefix = service.serviceName ? service.serviceName.charAt(0).toUpperCase() : "T";
         const tokenNumber = `${prefix}-${tokenSequence}`;
 
-        const token = await Token.create({
-            tokenNumber,
-            tokenSequence,
-            customerId: req.user.userId,
-            businessId,
-            serviceId,
+        const token = await prisma.token.create({
+            data: {
+                tokenNumber,
+                tokenSequence,
+                customerId: req.user.userId,
+                businessId,
+                serviceId,
+            }
         });
+        
         const queueKey = queueKeyFor(businessId, serviceId);
 
-        await redisClient.rPush(queueKey, token._id.toString());
+        await redisClient.rPush(queueKey, token.id);
         await expireQueueKey(queueKey);
 
-        // Notify all clients watching this queue that a new token joined
         const io = req.app.get("io");
         if (io) {
             io.to(queueKey).emit("queueUpdated", {
@@ -202,13 +209,17 @@ const generateToken = async (req, res) => {
         });
     }
 };
+
 const getQueuePosition = async (req, res) => {
     try {
         const { tokenId } = req.params;
 
-        const token = await Token.findOne({
-            _id: tokenId,
-            customerId: req.user.userId,
+        const token = await prisma.token.findFirst({
+            where: {
+                id: tokenId,
+                customerId: req.user.userId,
+            },
+            include: { service: true }
         });
 
         if (!token) {
@@ -218,6 +229,8 @@ const getQueuePosition = async (req, res) => {
             });
         }
 
+        const serviceId = token.serviceId;
+
         if (token.status !== "waiting") {
             return res.status(200).json({
                 success: true,
@@ -226,12 +239,13 @@ const getQueuePosition = async (req, res) => {
                     tokenNumber: token.tokenNumber,
                     status: token.status,
                     position: 0,
+                    estimatedWaitTime: 0,
                 },
             });
         }
 
-        const queueKey = queueKeyFor(token.businessId, token.serviceId);
-        let index = await redisClient.lPos(queueKey, token._id.toString());
+        const queueKey = queueKeyFor(token.businessId, serviceId);
+        let index = await redisClient.lPos(queueKey, token.id);
 
         if (index === null) {
             const queueLength = await redisClient.lLen(queueKey);
@@ -240,11 +254,13 @@ const getQueuePosition = async (req, res) => {
                 await loadWaitingTokensToRedis(
                     queueKey,
                     token.businessId,
-                    token.serviceId
+                    serviceId
                 );
-                index = await redisClient.lPos(queueKey, token._id.toString());
+                index = await redisClient.lPos(queueKey, token.id);
             }
         }
+
+        const avgDuration = token.service && token.service.estimatedDuration ? token.service.estimatedDuration : 5;
 
         if (index !== null) {
             return res.status(200).json({
@@ -253,21 +269,23 @@ const getQueuePosition = async (req, res) => {
                     tokenNumber: token.tokenNumber,
                     status: token.status,
                     position: index + 1,
+                    estimatedWaitTime: (index + 1) * avgDuration,
                 },
             });
         }
 
-        const waitingTokens = await Token.find({
-            businessId: token.businessId,
-            serviceId: token.serviceId,
-            status: "waiting",
-        })
-            .sort({ joinedAt: 1 })
-            .select("_id")
-            .lean();
+        const waitingTokens = await prisma.token.findMany({
+            where: {
+                businessId: token.businessId,
+                serviceId: serviceId,
+                status: "waiting",
+            },
+            orderBy: { joinedAt: 'asc' },
+            select: { id: true }
+        });
 
         const position = waitingTokens.findIndex((item) =>
-            item._id.toString() === token._id.toString()
+            item.id === token.id
         );
 
         if (position === -1) {
@@ -283,6 +301,7 @@ const getQueuePosition = async (req, res) => {
                 tokenNumber: token.tokenNumber,
                 status: token.status,
                 position: position + 1,
+                estimatedWaitTime: (position + 1) * avgDuration,
             },
         });
     } catch (error) {
@@ -310,12 +329,15 @@ const getCurrentQueue = async (req, res) => {
             });
         }
 
-        let query = { businessId, status: { $in: ["waiting", "called", "cancelled", "no_show", "served"] } };
+        let query = { businessId, status: { in: ["waiting", "called", "cancelled", "no_show", "served"] } };
         if (serviceId !== "all") {
             query.serviceId = serviceId;
         }
 
-        const tokens = await Token.find(query).sort({ joinedAt: 1 });
+        const tokens = await prisma.token.findMany({
+            where: query,
+            orderBy: { joinedAt: 'asc' }
+        });
 
         // Cache for 5 seconds to prevent Thundering Herd read spikes
         await redisClient.setEx(cacheKey, 5, JSON.stringify(tokens));
@@ -348,10 +370,13 @@ const callNextToken = async (req, res) => {
         let nextToken = null;
 
         if (serviceId === "all") {
-            nextToken = await Token.findOne({ businessId, status: "waiting" }).sort({ joinedAt: 1 });
+            nextToken = await prisma.token.findFirst({
+                where: { businessId, status: "waiting" },
+                orderBy: { joinedAt: 'asc' }
+            });
             if (nextToken) {
-                const queueKey = queueKeyFor(businessId, nextToken.serviceId.toString());
-                await redisClient.lRem(queueKey, 0, nextToken._id.toString());
+                const queueKey = queueKeyFor(businessId, nextToken.serviceId);
+                await redisClient.lRem(queueKey, 0, nextToken.id);
             }
         } else {
             const queueKey = queueKeyFor(businessId, serviceId);
@@ -377,36 +402,37 @@ const callNextToken = async (req, res) => {
             });
         }
 
-        nextToken.status = "called";
-        nextToken.calledAt = new Date();
-
-        await nextToken.save();
-
+        nextToken = await prisma.token.update({
+            where: { id: nextToken.id },
+            data: {
+                status: "called",
+                calledAt: new Date()
+            }
+        });
        
         await notificationQueue.add("token-called", {
             userId: nextToken.customerId,
-            tokenId: nextToken._id,
+            tokenId: nextToken.id,
             tokenNumber: nextToken.tokenNumber,
             businessId,
-            serviceId,
+            serviceId: nextToken.serviceId,
             type: "queue",
             message: `Token ${nextToken.tokenNumber} has been called. Please proceed to the counter.`,
         });
 
-      
         const io = req.app.get("io");
         if (io) {
-            const room = queueKeyFor(businessId, serviceId);
+            const room = queueKeyFor(businessId, nextToken.serviceId);
             io.to(room).emit("queueUpdated", {
                 event: "tokenCalled",
                 businessId,
-                serviceId,
+                serviceId: nextToken.serviceId,
                 token: nextToken,
             });
             io.to(`queue:${businessId}:all`).emit("queueUpdated", {
                 event: "tokenCalled",
                 businessId,
-                serviceId,
+                serviceId: nextToken.serviceId,
                 token: nextToken,
             });
         }
@@ -428,48 +454,55 @@ const callSpecificToken = async (req, res) => {
     try {
         const { tokenId } = req.params;
 
-        const token = await Token.findOne({ _id: tokenId, status: "waiting" });
+        const token = await prisma.token.findFirst({
+            where: { id: tokenId, status: "waiting" }
+        });
+        
         if (!token) {
             return res.status(404).json({ success: false, message: "Waiting token not found" });
         }
 
         const queueKey = queueKeyFor(token.businessId, token.serviceId);
-        await redisClient.lRem(queueKey, 0, token._id.toString());
+        await redisClient.lRem(queueKey, 0, token.id);
 
-        token.status = "called";
-        token.calledAt = new Date();
-        await token.save();
+        const updatedToken = await prisma.token.update({
+            where: { id: token.id },
+            data: {
+                status: "called",
+                calledAt: new Date()
+            }
+        });
 
         await notificationQueue.add("token-called", {
-            userId: token.customerId,
-            tokenId: token._id,
-            tokenNumber: token.tokenNumber,
-            businessId: token.businessId,
-            serviceId: token.serviceId,
+            userId: updatedToken.customerId,
+            tokenId: updatedToken.id,
+            tokenNumber: updatedToken.tokenNumber,
+            businessId: updatedToken.businessId,
+            serviceId: updatedToken.serviceId,
             type: "queue",
-            message: `Token ${token.tokenNumber} has been called. Please proceed to the counter.`,
+            message: `Token ${updatedToken.tokenNumber} has been called. Please proceed to the counter.`,
         });
 
         const io = req.app.get("io");
         if (io) {
             io.to(queueKey).emit("queueUpdated", {
                 event: "tokenCalled",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                token: token,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                token: updatedToken,
             });
-            io.to(`queue:${token.businessId}:all`).emit("queueUpdated", {
+            io.to(`queue:${updatedToken.businessId}:all`).emit("queueUpdated", {
                 event: "tokenCalled",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                token: token,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                token: updatedToken,
             });
         }
 
         return res.status(200).json({
             success: true,
             message: "Token called successfully",
-            data: token,
+            data: updatedToken,
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -480,91 +513,98 @@ const markTokenServed = async (req, res) => {
     try {
         const { tokenId } = req.params;
 
-        const token = await Token.findOne(
-            {
-                _id: tokenId,
+        const token = await prisma.token.findFirst({
+            where: {
+                id: tokenId,
                 status: "called",
             }
-        );
+        });
         if (!token) {
-            return res.status(404).json(
-                {
-                    success: false,
-                    message: "Token not found",
-                }
-            )
+            return res.status(404).json({
+                success: false,
+                message: "Token not found",
+            });
         }
-        token.status = "served";
-        token.servedAt = new Date();
-
+        
+        const servedAt = new Date();
+        let actualDuration = null;
         if (token.calledAt) {
-            token.actualDuration = Math.ceil(
-                (token.servedAt - token.calledAt) / (1000 * 60)
-            );
+            actualDuration = Math.ceil((servedAt - token.calledAt) / (1000 * 60));
         }
-        await token.save();
+
+        const updatedToken = await prisma.token.update({
+            where: { id: token.id },
+            data: {
+                status: "served",
+                servedAt,
+                actualDuration
+            }
+        });
 
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
 
-        const appointment = await Appointment.findOne({
-            userId: token.customerId,
-            businessId: token.businessId,
-            serviceId: token.serviceId,
-            status: "scheduled",
-            appointmentDate: { $gte: todayStart, $lte: todayEnd }
+        const appointment = await prisma.appointment.findFirst({
+            where: {
+                userId: updatedToken.customerId,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                status: "scheduled",
+                appointmentDate: { gte: todayStart, lte: todayEnd }
+            }
         });
 
         if (appointment) {
-            appointment.status = "completed";
-            await appointment.save();
+            await prisma.appointment.update({
+                where: { id: appointment.id },
+                data: { status: "completed" }
+            });
         }
 
         const io = req.app.get("io");
         if (io) {
-            const queueKey = queueKeyFor(token.businessId, token.serviceId);
+            const queueKey = queueKeyFor(updatedToken.businessId, updatedToken.serviceId);
             io.to(queueKey).emit("queueUpdated", {
                 event: "tokenServed",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                tokenId: token._id,
-                tokenNumber: token.tokenNumber,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                tokenId: updatedToken.id,
+                tokenNumber: updatedToken.tokenNumber,
             });
-            io.to(`queue:${token.businessId}:all`).emit("queueUpdated", {
+            io.to(`queue:${updatedToken.businessId}:all`).emit("queueUpdated", {
                 event: "tokenServed",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                tokenId: token._id,
-                tokenNumber: token.tokenNumber,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                tokenId: updatedToken.id,
+                tokenNumber: updatedToken.tokenNumber,
             });
         }
 
         return res.status(200).json({
             success: true,
             message: "Token marked as served",
-            data: token,
+            data: updatedToken,
         });
-    }
-    catch (error) {
+    } catch (error) {
         console.error("markTokenServed error:", error);
         return res.status(500).json({
             success: false,
             message: error.message,
         });
     }
-
-
 }
 
 const markNoShow = async (req, res) => {
     try {
         const { tokenId } = req.params;
 
-        const token = await Token.findOne({
-            _id: tokenId,
-            status: "called",
+        const token = await prisma.token.findFirst({
+            where: {
+                id: tokenId,
+                status: "called",
+            }
         });
 
         if (!token) {
@@ -574,33 +614,34 @@ const markNoShow = async (req, res) => {
             });
         }
 
-        token.status = "no_show";
-
-        await token.save();
+        const updatedToken = await prisma.token.update({
+            where: { id: token.id },
+            data: { status: "no_show" }
+        });
 
         const io = req.app.get("io");
         if (io) {
-            const queueKey = queueKeyFor(token.businessId, token.serviceId);
+            const queueKey = queueKeyFor(updatedToken.businessId, updatedToken.serviceId);
             io.to(queueKey).emit("queueUpdated", {
                 event: "tokenNoShow",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                tokenId: token._id,
-                tokenNumber: token.tokenNumber,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                tokenId: updatedToken.id,
+                tokenNumber: updatedToken.tokenNumber,
             });
-            io.to(`queue:${token.businessId}:all`).emit("queueUpdated", {
+            io.to(`queue:${updatedToken.businessId}:all`).emit("queueUpdated", {
                 event: "tokenNoShow",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                tokenId: token._id,
-                tokenNumber: token.tokenNumber,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                tokenId: updatedToken.id,
+                tokenNumber: updatedToken.tokenNumber,
             });
         }
 
         return res.status(200).json({
             success: true,
             message: "Token marked as no show",
-            data: token,
+            data: updatedToken,
         });
     } catch (error) {
         console.error("markNoShow error:", error);
@@ -615,9 +656,11 @@ const recallToken = async (req, res) => {
     try {
         const { tokenId } = req.params;
 
-        const token = await Token.findOne({
-            _id: tokenId,
-            status: "no_show",
+        const token = await prisma.token.findFirst({
+            where: {
+                id: tokenId,
+                status: "no_show",
+            }
         });
 
         if (!token) {
@@ -627,32 +670,35 @@ const recallToken = async (req, res) => {
             });
         }
 
-        // Move them straight back to called so staff can serve them immediately
-        token.status = "called";
-        token.calledAt = new Date();
-        await token.save();
+        const updatedToken = await prisma.token.update({
+            where: { id: token.id },
+            data: {
+                status: "called",
+                calledAt: new Date()
+            }
+        });
 
         const io = req.app.get("io");
         if (io) {
-            const queueKey = queueKeyFor(token.businessId, token.serviceId);
+            const queueKey = queueKeyFor(updatedToken.businessId, updatedToken.serviceId);
             io.to(queueKey).emit("queueUpdated", {
                 event: "tokenCalled",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                token: token,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                token: updatedToken,
             });
-            io.to(`queue:${token.businessId}:all`).emit("queueUpdated", {
+            io.to(`queue:${updatedToken.businessId}:all`).emit("queueUpdated", {
                 event: "tokenCalled",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                token: token,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                token: updatedToken,
             });
         }
 
         return res.status(200).json({
             success: true,
             message: "Token recalled successfully",
-            data: token,
+            data: updatedToken,
         });
     } catch (error) {
         return res.status(500).json({
@@ -666,10 +712,11 @@ const cancelToken = async (req, res) => {
     try {
         const { tokenId } = req.params;
 
-        // Find the token — must belong to the requesting customer
-        const token = await Token.findOne({
-            _id: tokenId,
-            customerId: req.user.userId,
+        const token = await prisma.token.findFirst({
+            where: {
+                id: tokenId,
+                customerId: req.user.userId,
+            }
         });
 
         if (!token) {
@@ -679,8 +726,6 @@ const cancelToken = async (req, res) => {
             });
         }
 
-        // Can only cancel a token that is still waiting
-        // Once called, the staff is already attending to them
         if (token.status !== "waiting") {
             return res.status(400).json({
                 success: false,
@@ -688,32 +733,29 @@ const cancelToken = async (req, res) => {
             });
         }
 
-        // Update MongoDB first
-        token.status = "cancelled";
-        await token.save();
+        const updatedToken = await prisma.token.update({
+            where: { id: token.id },
+            data: { status: "cancelled" }
+        });
 
-        // Remove from Redis live queue
-        // LREM key 0 value — 0 means remove ALL occurrences (safe guard)
-        const queueKey = queueKeyFor(token.businessId, token.serviceId);
-        await redisClient.lRem(queueKey, 0, token._id.toString());
+        const queueKey = queueKeyFor(updatedToken.businessId, updatedToken.serviceId);
+        await redisClient.lRem(queueKey, 0, updatedToken.id);
 
-        // Broadcast to queue room so staff board and other customers
-        // update their positions in real time
         const io = req.app.get("io");
         if (io) {
             io.to(queueKey).emit("queueUpdated", {
                 event: "tokenCancelled",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                tokenId: token._id,
-                tokenNumber: token.tokenNumber,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                tokenId: updatedToken.id,
+                tokenNumber: updatedToken.tokenNumber,
             });
-            io.to(`queue:${token.businessId}:all`).emit("queueUpdated", {
+            io.to(`queue:${updatedToken.businessId}:all`).emit("queueUpdated", {
                 event: "tokenCancelled",
-                businessId: token.businessId,
-                serviceId: token.serviceId,
-                tokenId: token._id,
-                tokenNumber: token.tokenNumber,
+                businessId: updatedToken.businessId,
+                serviceId: updatedToken.serviceId,
+                tokenId: updatedToken.id,
+                tokenNumber: updatedToken.tokenNumber,
             });
         }
 
@@ -721,8 +763,8 @@ const cancelToken = async (req, res) => {
             success: true,
             message: "Token cancelled successfully",
             data: {
-                tokenNumber: token.tokenNumber,
-                status: token.status,
+                tokenNumber: updatedToken.tokenNumber,
+                status: updatedToken.status,
             },
         });
     } catch (error) {
@@ -796,10 +838,14 @@ const predictWaitTime = async (req, res) => {
 
 const getMyTokens = async (req, res) => {
     try {
-        const tokens = await Token.find({ customerId: req.user.userId })
-            .populate("businessId", "businessName")
-            .populate("serviceId", "serviceName")
-            .sort({ createdAt: -1 });
+        const tokens = await prisma.token.findMany({
+            where: { customerId: req.user.userId },
+            include: {
+                business: { select: { businessName: true } },
+                service: { select: { serviceName: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
 
         return res.status(200).json({
             success: true,
@@ -818,17 +864,25 @@ const toggleQueuePause = async (req, res) => {
         const { serviceId } = req.params;
         const { isPaused } = req.body;
 
-        const service = await Service.findOne({ _id: serviceId, businessId: req.staffAssignment.businessId });
+        const service = await prisma.service.findFirst({
+            where: {
+                id: serviceId,
+                businessId: req.staffAssignment.businessId
+            }
+        });
+        
         if (!service) {
             return res.status(404).json({ success: false, message: "Service not found for your business" });
         }
 
-        service.isQueuePaused = isPaused;
-        await service.save();
+        const updatedService = await prisma.service.update({
+            where: { id: service.id },
+            data: { isQueuePaused: isPaused }
+        });
 
         const io = req.app.get("io");
         if (io) {
-            io.to(`queue:${service.businessId}:all`).emit("queuePaused", {
+            io.to(`queue:${updatedService.businessId}:all`).emit("queuePaused", {
                 serviceId,
                 isPaused
             });
@@ -837,7 +891,7 @@ const toggleQueuePause = async (req, res) => {
         return res.status(200).json({ 
             success: true, 
             message: `Queue is now ${isPaused ? 'paused' : 'active'}`, 
-            data: service 
+            data: updatedService 
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });

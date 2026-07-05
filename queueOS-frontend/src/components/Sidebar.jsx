@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Building2, PlusCircle, Users, BarChart3,
   CalendarCheck, Clock, Bell, User, X, BrainCircuit,
@@ -40,96 +41,117 @@ const NAV = {
   ],
 }
 
-const ROLE_COLORS = {
-  customer: 'from-blue-600 to-blue-800',
-  owner:    'from-purple-600 to-purple-800',
-  staff:    'from-emerald-600 to-emerald-800',
-  admin:    'from-rose-600 to-rose-800',
-}
-
-const ROLE_LABELS = {
-  customer: 'Customer Portal',
-  owner:    'Owner Portal',
-  staff:    'Staff Portal',
-  admin:    'Admin Portal',
-}
-
 export default function Sidebar({ open, onClose }) {
   const { user } = useAuth()
   if (!user) return null
 
   const navItems = NAV[user.role] || []
-  const gradientClass = ROLE_COLORS[user.role] || 'from-primary-600 to-primary-800'
+
+  const menuVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: -20, 
+      scale: 0.95,
+      transformOrigin: "top left"
+    },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1,
+      transition: { 
+        type: "spring", 
+        stiffness: 300, 
+        damping: 24,
+        staggerChildren: 0.05,
+        delayChildren: 0.1
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      y: -10, 
+      scale: 0.95,
+      transition: { duration: 0.2 }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, x: -10 },
+    visible: { opacity: 1, x: 0 }
+  }
 
   return (
-    <>
+    <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 bg-slate-950/50 z-20 lg:hidden" onClick={onClose} />
-      )}
+        <>
+          {/* Backdrop */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40" 
+            onClick={onClose} 
+          />
 
-      <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 w-72 bg-slate-950/95 border-r border-white/10 backdrop-blur-xl transform transition-transform duration-300 ease-in-out ${
-          open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
-      >
-        <div className="relative h-full flex flex-col overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 opacity-90" />
-          <div className="relative z-10 flex items-center justify-between gap-3 px-6 py-5 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-3xl bg-white/10 text-white shadow-lg shadow-slate-950/20">
-                <span className="text-lg font-black">Q</span>
-              </div>
-              <div>
-                <p className="text-white text-base font-semibold">QueueOS</p>
-                <p className="text-white/60 text-xs mt-1">{ROLE_LABELS[user.role]}</p>
-              </div>
-            </div>
-            <button onClick={onClose} className="lg:hidden text-white/70 hover:text-white">
-              <X size={20} />
-            </button>
-          </div>
-
-          <nav className="relative z-10 flex-1 overflow-y-auto px-4 py-5 space-y-1">
-            {navItems.map(({ to, icon: Icon, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `group flex items-center gap-3 rounded-3xl px-4 py-3 text-sm font-medium transition ${
-                    isActive
-                      ? 'bg-white/15 text-white shadow-[0_10px_30px_-15px_rgba(255,255,255,0.25)]'
-                      : 'text-slate-200 hover:bg-white/10 hover:text-white'
-                  }`
-                }
-              >
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-slate-200 group-hover:bg-white/20 group-hover:text-white">
-                  <Icon size={18} />
-                </span>
-                <span>{label}</span>
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="relative z-10 border-t border-white/10 px-5 py-5 bg-slate-950/95">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+          {/* Dropdown Menu */}
+          <motion.div
+            variants={menuVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="absolute top-20 left-4 sm:left-6 z-50 w-72 rounded-[2rem] bg-white/90 backdrop-blur-3xl shadow-[0_20px_60px_-15px_rgba(79,70,229,0.3)] border border-white/60 overflow-hidden flex flex-col max-h-[calc(100vh-100px)]"
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200/50">
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-3xl bg-white/10 flex items-center justify-center text-white text-base font-bold">
+                <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] bg-indigo-600 text-white shadow-md shadow-indigo-500/30">
+                  <span className="text-lg font-black">Q</span>
+                </div>
+                <div>
+                  <p className="text-slate-900 text-sm font-bold">QueueOS</p>
+                  <p className="text-indigo-600 text-[10px] font-bold uppercase tracking-wider">{user.role} Portal</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-rose-500 transition-colors p-2 rounded-full hover:bg-rose-50">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+              {navItems.map(({ to, icon: Icon, label }) => (
+                <motion.div key={to} variants={itemVariants}>
+                  <NavLink
+                    to={to}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
+                        isActive
+                          ? 'bg-indigo-50 text-indigo-700 shadow-sm'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600 hover:translate-x-1'
+                      }`
+                    }
+                  >
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-400 group-hover:text-indigo-600 group-hover:shadow-sm transition-all border border-slate-100">
+                      <Icon size={16} />
+                    </span>
+                    <span>{label}</span>
+                  </NavLink>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="border-t border-slate-200/50 p-4 bg-slate-50/50">
+              <div className="flex items-center gap-3 rounded-2xl bg-white p-3 border border-slate-100 shadow-sm">
+                <div className="h-9 w-9 rounded-[1rem] bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm font-bold">
                   {user.name?.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{user.name}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                  <p className="text-xs font-bold text-slate-800 truncate">{user.name}</p>
+                  <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
                 </div>
               </div>
-              <div className="mt-4 space-y-2 text-xs text-slate-400">
-                <p>Role: <span className="font-semibold text-white capitalize">{user.role}</span></p>
-                <p className="truncate">Ready for your next queue action.</p>
-              </div>
             </div>
-          </div>
-        </div>
-      </aside>
-    </>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   )
 }

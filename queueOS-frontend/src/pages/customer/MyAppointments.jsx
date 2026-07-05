@@ -6,6 +6,7 @@ import api from '../../api'
 
 const STATUS_CONFIG = {
   scheduled:   { badge: 'badge-active', icon: CalendarCheck },
+  checked_in:  { badge: 'bg-indigo-100 text-indigo-700 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', icon: CheckCircle },
   completed:   { badge: 'badge-inactive', icon: CheckCircle },
   cancelled:   { badge: 'bg-red-100 text-red-700 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', icon: X },
   rescheduled: { badge: 'bg-blue-100 text-blue-700 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', icon: AlertCircle },
@@ -30,6 +31,16 @@ export default function MyAppointments() {
       toast.success('Appointment cancelled')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Cancel failed')
+    }
+  }
+
+  const checkInAppointment = async (id) => {
+    try {
+      await api.post(`/appointments/${id}/check-in`)
+      setAppointments(prev => prev.map(a => a._id === id ? { ...a, status: 'checked_in' } : a))
+      toast.success('Checked in successfully! You are now in the live queue.')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Check-in failed')
     }
   }
 
@@ -66,6 +77,10 @@ export default function MyAppointments() {
               </div>
               {a.status === 'scheduled' && (
                 <div className="flex gap-2 pt-2 border-t border-gray-100">
+                  <button onClick={() => checkInAppointment(a._id)}
+                    className="btn-primary text-xs py-1.5 flex items-center gap-1">
+                    <CheckCircle size={12} /> Check In (Arrived)
+                  </button>
                   <button onClick={() => cancelAppointment(a._id)}
                     className="btn-danger text-xs py-1.5 flex items-center gap-1">
                     <X size={12} /> Cancel

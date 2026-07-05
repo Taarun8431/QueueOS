@@ -2,7 +2,7 @@ require("dotenv").config();
 const logger = require("./src/utils/logger");
 const http = require("http");
 const app = require("./src/app");
-const connectDB = require("./src/config/db");
+const prisma = require("./src/config/prisma");
 const { connect: connectRedis, pubClient, subClient } = require("./src/config/redis");
 const { Server } = require("socket.io");
 const { createAdapter } = require("@socket.io/redis-adapter");
@@ -40,8 +40,8 @@ io.on("connection", (socket) => {
 
 async function startServer() {
   try {
-    await connectDB();
-    logger.info("✔ Connected to MongoDB");
+    await prisma.$connect();
+    logger.info("✔ Connected to PostgreSQL");
     
     await connectRedis();
     logger.info("✔ Connected to Redis");
@@ -66,9 +66,8 @@ const gracefulShutdown = async (signal) => {
   server.close(async () => {
     logger.info("✔ HTTP server closed. Processing active requests...");
     try {
-      const mongoose = require("mongoose");
-      await mongoose.connection.close();
-      logger.info("✔ MongoDB connection closed.");
+      await prisma.$disconnect();
+      logger.info("✔ PostgreSQL connection closed.");
       
       await pubClient.quit();
       await subClient.quit();

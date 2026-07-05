@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  customer
+  staff
+  owner
+  admin
+}
+
+enum BusinessCategory {
+  hospital
+  salon
+  bank
+  government_office
+  service_center
+}
+
+enum AppointmentStatus {
+  scheduled
+  checked_in
+  completed
+  cancelled
+  rescheduled
+}
+
+enum TokenStatus {
+  waiting
+  called
+  served
+  no_show
+  cancelled
+}
+
+enum NotificationType {
+  queue
+  appointment
+  system
+}
+
+model User {
+  id               String            @id @default(uuid())
+  name             String
+  email            String            @unique
+  password         String
+  phone            String
+  role             Role              @default(customer)
+  dob              DateTime?
+  isDeleted        Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  businesses       Business[]        @relation("BusinessOwner")
+  appointments     Appointment[]
+  tokens           Token[]
+  notifications    Notification[]
+  refreshTokens    RefreshToken[]
+  staffAssignments StaffAssignment[] @relation("StaffAssigned")
+  assignedByMe     StaffAssignment[] @relation("AssignedBy")
+}
+
+model Business {
+  id               String            @id @default(uuid())
+  businessName     String
+  ownerId          String
+  owner            User              @relation("BusinessOwner", fields: [ownerId], references: [id])
+  businessEmail    String            @unique
+  description      String?
+  category         BusinessCategory
+  address          String
+  phone            String
+  workingHoursOpen String
+  workingHoursClose String
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  services         Service[]
+  appointments     Appointment[]
+  tokens           Token[]
+  staffAssignments StaffAssignment[]
+}
+
+model Service {
+  id               String            @id @default(uuid())
+  serviceName      String
+  businessId       String
+  business         Business          @relation(fields: [businessId], references: [id])
+  description      String?
+  estimatedDuration Int
+  price            Float
+  isActive         Boolean           @default(true)
+  isQueuePaused    Boolean           @default(false)
+  isDeleted        Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  appointments     Appointment[]
+  tokens           Token[]
+}
+
+model Appointment {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  businessId       String
+  business         Business          @relation(fields: [businessId], references: [id])
+  serviceId        String
+  service          Service           @relation(fields: [serviceId], references: [id])
+  appointmentDate  DateTime
+  appointmentTime  String
+  status           AppointmentStatus @default(scheduled)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([businessId, serviceId, appointmentDate, status])
+  @@index([userId, status])
+}
+
+model Token {
+  id               String            @id @default(uuid())
+  tokenNumber      String
+  tokenSequence    Int               @default(1)
+  customerId       String
+  customer         User              @relation(fields: [customerId], references: [id])
+  businessId       String
+  business         Business          @relation(fields: [businessId], references: [id])
+  serviceId        String
+  service          Service           @relation(fields: [serviceId], references: [id])
+  status           TokenStatus       @default(waiting)
+  joinedAt         DateTime          @default(now())
+  calledAt         DateTime?
+  servedAt         DateTime?
+  actualDuration   Int?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([businessId, serviceId, status, joinedAt])
+  @@index([businessId, serviceId, createdAt])
+  @@index([customerId, createdAt])
+}
+
+model StaffAssignment {
+  id               String            @id @default(uuid())
+  staffId          String            @unique
+  staff            User              @relation("StaffAssigned", fields: [staffId], references: [id])
+  businessId       String
+  business         Business          @relation(fields: [businessId], references: [id])
+  assignedById     String
+  assignedBy       User              @relation("AssignedBy", fields: [assignedById], references: [id])
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model Notification {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  title            String
+  message          String
+  type             NotificationType  @default(queue)
+  isRead           Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model RefreshToken {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  tokenHash        String
+  expiresAt        DateTime
+  isRevoked        Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}

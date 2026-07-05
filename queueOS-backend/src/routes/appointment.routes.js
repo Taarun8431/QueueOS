@@ -9,6 +9,7 @@ const {
     getBusinessAppointments,
     cancelAppointment,
     rescheduleAppointment,
+    checkInAppointment,
 } = require("../controllers/appointment.controller");
 
 const protect = require("../middlewares/auth.middleware");
@@ -49,6 +50,13 @@ router.put(
     protect,
     authorizeRoles("customer", "admin"),
     rescheduleAppointment
+);
+
+router.post(
+    "/:id/check-in",
+    protect,
+    authorizeRoles("customer", "admin", "staff"),
+    checkInAppointment
 );
 
 module.exports = router;

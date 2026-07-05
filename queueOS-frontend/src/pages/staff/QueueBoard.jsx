@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Users, Clock, CheckCircle, RefreshCw, Wifi } from 'lucide-react'
+import { Users, Clock, CheckCircle, RefreshCw, Wifi, QrCode, X } from 'lucide-react'
+import { QRCodeCanvas } from 'qrcode.react'
 import { toast } from 'react-toastify'
 import PageHeader from '../../components/PageHeader'
 import api from '../../api'
@@ -13,6 +14,7 @@ export default function QueueBoard() {
   const [filter, setFilter] = useState('all')
   const [connected, setConnected] = useState(socket.connected)
   const [loading, setLoading] = useState(true)
+  const [showQR, setShowQR] = useState(false)
 
   useEffect(() => {
     api.get('/staff/my-assignment')
@@ -118,7 +120,49 @@ export default function QueueBoard() {
             </button>
           ))}
         </div>
+
+        {serviceFilter !== 'all' && (
+          <button 
+            onClick={() => setShowQR(true)}
+            className="ml-auto flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition"
+          >
+            <QrCode size={16} /> Generate Join QR
+          </button>
+        )}
       </div>
+
+      {showQR && assignment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl relative">
+            <button onClick={() => setShowQR(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+              <X size={20} />
+            </button>
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <QrCode size={32} />
+              </div>
+              <h3 className="text-xl font-black text-slate-900">Department Queue</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                {services.find(s => s._id === serviceFilter)?.serviceName}
+              </p>
+            </div>
+            
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex justify-center mb-6">
+              <QRCodeCanvas 
+                value={`${window.location.origin}/customer/join-queue?businessId=${assignment.businessId._id || assignment.businessId}&serviceId=${serviceFilter}`}
+                size={200}
+                level="H"
+                includeMargin={true}
+                className="rounded-xl"
+              />
+            </div>
+            
+            <p className="text-xs text-slate-400 font-medium px-4">
+              Ask the patient to scan this code with their phone camera to instantly join this specific department.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         {filtered.map(q => (

@@ -1,6 +1,4 @@
-const StaffAssignment = require("../models/staffAssignment.model");
-const Business = require("../models/business.model");
-const User = require("../models/user.model");
+const prisma = require("../config/prisma");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 
@@ -15,11 +13,12 @@ const assignStaff = async (req, res) => {
             });
         }
 
-       
-        const staffUser = await User.findOne({
-            _id: staffId,
-            role: "staff",
-            isDeleted: false,
+        const staffUser = await prisma.user.findFirst({
+            where: {
+                id: staffId,
+                role: "staff",
+                isDeleted: false,
+            }
         });
 
         if (!staffUser) {
@@ -29,10 +28,11 @@ const assignStaff = async (req, res) => {
             });
         }
 
-        
-        const business = await Business.findOne({
-            _id: businessId,
-            isActive: true,
+        const business = await prisma.business.findFirst({
+            where: {
+                id: businessId,
+                isActive: true,
+            }
         });
 
         if (!business) {
@@ -43,7 +43,7 @@ const assignStaff = async (req, res) => {
         }
 
         if (
-            business.ownerId.toString() !== req.user.userId &&
+            business.ownerId !== req.user.userId &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -52,17 +52,30 @@ const assignStaff = async (req, res) => {
             });
         }
 
-       
-        const assignment = await StaffAssignment.findOneAndUpdate(
-            { staffId },
-            {
-                staffId,
-                businessId,
-                assignedBy: req.user.userId,
-                isActive: true,
-            },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
+        const existingAssignment = await prisma.staffAssignment.findUnique({
+            where: { staffId }
+        });
+
+        let assignment;
+        if (existingAssignment) {
+            assignment = await prisma.staffAssignment.update({
+                where: { staffId },
+                data: {
+                    businessId,
+                    assignedById: req.user.userId,
+                    isActive: true,
+                }
+            });
+        } else {
+            assignment = await prisma.staffAssignment.create({
+                data: {
+                    staffId,
+                    businessId,
+                    assignedById: req.user.userId,
+                    isActive: true,
+                }
+            });
+        }
 
         return res.status(200).json({
             success: true,
@@ -77,14 +90,15 @@ const assignStaff = async (req, res) => {
     }
 };
 
-
 const unassignStaff = async (req, res) => {
     try {
         const { staffId } = req.params;
 
-        const assignment = await StaffAssignment.findOne({
-            staffId,
-            isActive: true,
+        const assignment = await prisma.staffAssignment.findFirst({
+            where: {
+                staffId,
+                isActive: true,
+            }
         });
 
         if (!assignment) {
@@ -94,10 +108,12 @@ const unassignStaff = async (req, res) => {
             });
         }
 
-        const business = await Business.findById(assignment.businessId);
+        const business = await prisma.business.findUnique({
+            where: { id: assignment.businessId }
+        });
 
         if (
-            business.ownerId.toString() !== req.user.userId &&
+            business.ownerId !== req.user.userId &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -106,8 +122,10 @@ const unassignStaff = async (req, res) => {
             });
         }
 
-        assignment.isActive = false;
-        await assignment.save();
+        await prisma.staffAssignment.update({
+            where: { id: assignment.id },
+            data: { isActive: false }
+        });
 
         return res.status(200).json({
             success: true,
@@ -121,14 +139,15 @@ const unassignStaff = async (req, res) => {
     }
 };
 
-
 const getStaffForBusiness = async (req, res) => {
     try {
         const { businessId } = req.params;
 
-        const business = await Business.findOne({
-            _id: businessId,
-            isActive: true,
+        const business = await prisma.business.findFirst({
+            where: {
+                id: businessId,
+                isActive: true,
+            }
         });
 
         if (!business) {
@@ -139,7 +158,7 @@ const getStaffForBusiness = async (req, res) => {
         }
 
         if (
-            business.ownerId.toString() !== req.user.userId &&
+            business.ownerId !== req.user.userId &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -148,10 +167,17 @@ const getStaffForBusiness = async (req, res) => {
             });
         }
 
-        const assignments = await StaffAssignment.find({
-            businessId,
-            isActive: true,
-        }).populate("staffId", "name email phone");
+        const assignments = await prisma.staffAssignment.findMany({
+            where: {
+                businessId,
+                isActive: true,
+            },
+            include: {
+                staff: {
+                    select: { name: true, email: true, phone: true }
+                }
+            }
+        });
 
         return res.status(200).json({
             success: true,
@@ -166,15 +192,22 @@ const getStaffForBusiness = async (req, res) => {
     }
 };
 
-
 const getMyAssignment = async (req, res) => {
     try {
-        const assignment = await StaffAssignment.findOne({
-            staffId: req.user.userId,
-            isActive: true,
-        })
-            .populate("businessId", "businessName category address phone workingHours")
-            .populate("assignedBy", "name email");
+        const assignment = await prisma.staffAssignment.findFirst({
+            where: {
+                staffId: req.user.userId,
+                isActive: true,
+            },
+            include: {
+                business: {
+                    select: { businessName: true, category: true, address: true, phone: true, workingHoursOpen: true, workingHoursClose: true }
+                },
+                assignedBy: {
+                    select: { name: true, email: true }
+                }
+            }
+        });
 
         if (!assignment) {
             return res.status(404).json({
@@ -206,9 +239,11 @@ const createAndAssignStaff = async (req, res) => {
             });
         }
 
-        const business = await Business.findOne({
-            _id: businessId,
-            isActive: true,
+        const business = await prisma.business.findFirst({
+            where: {
+                id: businessId,
+                isActive: true,
+            }
         });
 
         if (!business) {
@@ -219,7 +254,7 @@ const createAndAssignStaff = async (req, res) => {
         }
 
         if (
-            business.ownerId.toString() !== req.user.userId &&
+            business.ownerId !== req.user.userId &&
             req.user.role !== "admin"
         ) {
             return res.status(403).json({
@@ -228,28 +263,29 @@ const createAndAssignStaff = async (req, res) => {
             });
         }
 
-        // Generate credentials
         const randomString = crypto.randomBytes(3).toString("hex");
         const generatedEmail = `staff_${randomString}@queueos.com`;
         const generatedPassword = crypto.randomBytes(4).toString("hex");
 
         const hashedPassword = await bcrypt.hash(generatedPassword, 10);
 
-        // Create User
-        const staffUser = await User.create({
-            name,
-            email: generatedEmail,
-            password: hashedPassword,
-            phone: phone || "0000000000",
-            role: "staff",
+        const staffUser = await prisma.user.create({
+            data: {
+                name,
+                email: generatedEmail,
+                password: hashedPassword,
+                phone: phone || "0000000000",
+                role: "staff",
+            }
         });
 
-        // Create Assignment
-        const assignment = await StaffAssignment.create({
-            staffId: staffUser._id,
-            businessId,
-            assignedBy: req.user.userId,
-            isActive: true,
+        const assignment = await prisma.staffAssignment.create({
+            data: {
+                staffId: staffUser.id,
+                businessId,
+                assignedById: req.user.userId,
+                isActive: true,
+            }
         });
 
         return res.status(201).json({

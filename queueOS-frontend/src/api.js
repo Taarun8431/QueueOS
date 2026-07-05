@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from 'react-toastify'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL + '/api',
@@ -43,10 +44,17 @@ api.interceptors.response.use(
       }
     }
 
+    // Global error handler for all API requests
+    if (error.response && error.response.status !== 401) {
+      const message = error.response.data?.message || 'Something went wrong. Please try again.'
+      toast.error(message)
+    } else if (!error.response) {
+      toast.error('Network error. Please check your connection.')
+    }
+
     return Promise.reject(error)
   }
 )
-
 
 export default api
 

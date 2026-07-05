@@ -66,13 +66,7 @@ export default function Register() {
           >
             Business Owner
           </button>
-          <button
-            type="button"
-            onClick={() => setRole('staff')}
-            className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all ${role === 'staff' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Staff
-          </button>
+
         </div>
 
         <div>

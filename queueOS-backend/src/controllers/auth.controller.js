@@ -1,5 +1,4 @@
-const User = require("../models/user.model");
-const RefreshToken = require("../models/refreshToken.model");
+const prisma = require("../config/prisma");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -8,7 +7,7 @@ const crypto = require("crypto");
 
 const generateAccessToken = (user) => {
     return jwt.sign(
-        { userId: user._id, role: user.role },
+        { userId: user.id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: "15m" }
     );
@@ -57,7 +56,7 @@ const registerUser = async (req, res) => {
         const allowedRoles = ["customer", "owner", "staff"];
         const userRole = role && allowedRoles.includes(role) ? role : "customer";
 
-        const existingUser = await User.findOne({ email });
+        const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) {
             return res.status(400).json({
                 success: false,
@@ -67,20 +66,22 @@ const registerUser = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await User.create({
-            name,
-            email,
-            password: hashedPassword,
-            phone,
-            role: userRole,
-            dob,
+        const user = await prisma.user.create({
+            data: {
+                name,
+                email,
+                password: hashedPassword,
+                phone,
+                role: userRole,
+                dob: dob ? new Date(dob) : null,
+            }
         });
 
         return res.status(201).json({
             success: true,
             message: "User registered successfully",
             data: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 phone: user.phone,
@@ -107,7 +108,7 @@ const loginUser = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email });
+        const user = await prisma.user.findUnique({ where: { email } });
         if (!user || user.isDeleted) {
             return res.status(400).json({
                 success: false,
@@ -134,15 +135,17 @@ const loginUser = async (req, res) => {
         expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
 
         // Revoke any existing refresh tokens for this user (single active session)
-        await RefreshToken.updateMany(
-            { userId: user._id, isRevoked: false },
-            { isRevoked: true }
-        );
+        await prisma.refreshToken.updateMany({
+            where: { userId: user.id, isRevoked: false },
+            data: { isRevoked: true }
+        });
 
-        await RefreshToken.create({
-            userId: user._id,
-            tokenHash,
-            expiresAt,
+        await prisma.refreshToken.create({
+            data: {
+                userId: user.id,
+                tokenHash,
+                expiresAt,
+            }
         });
 
         setRefreshTokenCookie(res, rawRefreshToken);
@@ -152,7 +155,7 @@ const loginUser = async (req, res) => {
             message: "Login successful",
             accessToken,
             data: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 phone: user.phone,
@@ -182,10 +185,12 @@ const refreshAccessToken = async (req, res) => {
         const tokenHash = hashToken(rawRefreshToken);
 
         // Find the token record — must exist, not revoked, not expired
-        const storedToken = await RefreshToken.findOne({
-            tokenHash,
-            isRevoked: false,
-            expiresAt: { $gt: new Date() },
+        const storedToken = await prisma.refreshToken.findFirst({
+            where: {
+                tokenHash,
+                isRevoked: false,
+                expiresAt: { gt: new Date() },
+            }
         });
 
         if (!storedToken) {
@@ -197,7 +202,7 @@ const refreshAccessToken = async (req, res) => {
             });
         }
 
-        const user = await User.findById(storedToken.userId);
+        const user = await prisma.user.findUnique({ where: { id: storedToken.userId } });
         if (!user || user.isDeleted) {
             return res.status(401).json({
                 success: false,
@@ -206,8 +211,10 @@ const refreshAccessToken = async (req, res) => {
         }
 
         // ── Rotation: revoke old token, issue a brand new one ──
-        storedToken.isRevoked = true;
-        await storedToken.save();
+        await prisma.refreshToken.update({
+            where: { id: storedToken.id },
+            data: { isRevoked: true }
+        });
 
         const newRawRefreshToken = generateRefreshToken();
         const newTokenHash = hashToken(newRawRefreshToken);
@@ -215,10 +222,12 @@ const refreshAccessToken = async (req, res) => {
         const newExpiresAt = new Date();
         newExpiresAt.setDate(newExpiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
 
-        await RefreshToken.create({
-            userId: user._id,
-            tokenHash: newTokenHash,
-            expiresAt: newExpiresAt,
+        await prisma.refreshToken.create({
+            data: {
+                userId: user.id,
+                tokenHash: newTokenHash,
+                expiresAt: newExpiresAt,
+            }
         });
 
         const newAccessToken = generateAccessToken(user);
@@ -243,11 +252,16 @@ const logOutuser = async (req, res) => {
 
         if (rawRefreshToken) {
             const tokenHash = hashToken(rawRefreshToken);
-            // Revoke in DB — token can never be used again even if attacker has it
-            await RefreshToken.findOneAndUpdate(
-                { tokenHash },
-                { isRevoked: true }
-            );
+            // Revoke in DB
+            const tokensToRevoke = await prisma.refreshToken.findMany({
+                where: { tokenHash }
+            });
+            for (const t of tokensToRevoke) {
+                await prisma.refreshToken.update({
+                    where: { id: t.id },
+                    data: { isRevoked: true }
+                });
+            }
         }
 
         // Clear the httpOnly cookie from the browser
@@ -271,7 +285,10 @@ const logOutuser = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
     try {
-        const user = await User.findById(req.user.userId).select("-password");
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.userId },
+            select: { id: true, name: true, email: true, phone: true, role: true, dob: true, createdAt: true }
+        });
 
         if (!user) {
             return res.status(404).json({
@@ -295,12 +312,17 @@ const getCurrentUser = async (req, res) => {
 const updateProfile = async (req, res) => {
     try {
         const { name, email, dob } = req.body;
+        
+        const updateData = {};
+        if (name) updateData.name = name;
+        if (email) updateData.email = email;
+        if (dob) updateData.dob = new Date(dob);
 
-        const updatedUser = await User.findByIdAndUpdate(
-            req.user.userId,
-            { name, email, dob },
-            { new: true, runValidators: true }
-        ).select("-password");
+        const updatedUser = await prisma.user.update({
+            where: { id: req.user.userId },
+            data: updateData,
+            select: { id: true, name: true, email: true, phone: true, role: true, dob: true }
+        });
 
         return res.status(200).json({
             success: true,
@@ -326,7 +348,7 @@ const updatePassword = async (req, res) => {
             });
         }
 
-        const user = await User.findById(req.user.userId);
+        const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -341,9 +363,13 @@ const updatePassword = async (req, res) => {
                 message: "Old password is incorrect",
             });
         }
+        
+        const newHashedPassword = await bcrypt.hash(newPassword, 10);
 
-        user.password = await bcrypt.hash(newPassword, 10);
-        await user.save();
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { password: newHashedPassword }
+        });
 
         return res.status(200).json({
             success: true,
@@ -357,7 +383,7 @@ const updatePassword = async (req, res) => {
     }
 };
 
- adminCreateUser = async (req, res) => {
+const adminCreateUser = async (req, res) => {
     try {
         const { name, email, password, phone, role, dob } = req.body;
 
@@ -376,7 +402,7 @@ const updatePassword = async (req, res) => {
             });
         }
 
-        const existing = await User.findOne({ email });
+        const existing = await prisma.user.findUnique({ where: { email } });
         if (existing) {
             return res.status(400).json({
                 success: false,
@@ -386,20 +412,22 @@ const updatePassword = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await User.create({
-            name,
-            email,
-            password: hashedPassword,
-            phone,
-            role,
-            dob,
+        const user = await prisma.user.create({
+            data: {
+                name,
+                email,
+                password: hashedPassword,
+                phone,
+                role,
+                dob: dob ? new Date(dob) : null,
+            }
         });
 
         return res.status(201).json({
             success: true,
             message: `${role} account created successfully`,
             data: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 phone: user.phone,

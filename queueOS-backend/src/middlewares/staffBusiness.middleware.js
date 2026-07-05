@@ -1,15 +1,11 @@
-const StaffAssignment = require("../models/staffAssignment.model");
-const Token = require("../models/token.model");
-
+const prisma = require("../config/prisma");
 
 const verifyStaffBusiness = async (req, res, next) => {
     try {
-        
         if (req.user.role === "admin" || req.user.role === "owner") {
             return next();
         }
 
-        
         if (req.user.role !== "staff") {
             return next();
         }
@@ -21,14 +17,17 @@ const verifyStaffBusiness = async (req, res, next) => {
 
 
         if (!businessId && req.params.tokenId) {
-            const token = await Token.findById(req.params.tokenId).select("businessId");
+            const token = await prisma.token.findUnique({
+                where: { id: req.params.tokenId },
+                select: { businessId: true }
+            });
             if (!token) {
                 return res.status(404).json({
                     success: false,
                     message: "Token not found",
                 });
             }
-            businessId = token.businessId.toString();
+            businessId = token.businessId;
         }
 
         if (!businessId) {
@@ -38,9 +37,11 @@ const verifyStaffBusiness = async (req, res, next) => {
             });
         }
 
-        const assignment = await StaffAssignment.findOne({
-            staffId: req.user.userId,
-            isActive: true,
+        const assignment = await prisma.staffAssignment.findFirst({
+            where: {
+                staffId: req.user.userId,
+                isActive: true,
+            }
         });
 
         if (!assignment) {
@@ -50,7 +51,7 @@ const verifyStaffBusiness = async (req, res, next) => {
             });
         }
 
-        if (assignment.businessId.toString() !== businessId.toString()) {
+        if (assignment.businessId !== businessId) {
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to perform operations on this business",

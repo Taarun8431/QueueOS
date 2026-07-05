@@ -1,0 +1,48 @@
+config:
+  target: "http://localhost:5001"
+  phases:
+    - duration: 30
+      arrivalRate: 50
+      rampTo: 500
+      name: "Ramp up high load"
+    - duration: 60
+      arrivalRate: 500
+      name: "Sustained high load"
+  processor: "./scripts/artillery-processor.js"
+
+scenarios:
+  - name: "Login, get queue, join queue"
+    engine: "http"
+    flow:
+      - function: "setupTestData"
+      
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.accessToken"
+              as: "token"
+            
+      - get:
+          url: "/api/queue/current/{{ businessId }}/{{ serviceId }}"
+          headers:
+            Authorization: "Bearer {{ token }}"
+            
+      - post:
+          url: "/api/queue/token"
+          json:
+            businessId: "{{ businessId }}"
+            serviceId: "{{ serviceId }}"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          capture:
+            - json: "$.data._id"
+              as: "tokenId"
+              
+      - put:
+          url: "/api/queue/cancel/{{ tokenId }}"
+          headers:
+            Cookie: "{{ cookie }}"
+          ifTrue: "tokenId"

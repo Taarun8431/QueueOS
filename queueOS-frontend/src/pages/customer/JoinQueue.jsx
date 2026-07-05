@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Building2, Clock, Search, Users, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Building2, Clock, Search, Users, ChevronRight, QrCode, Camera, X } from 'lucide-react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { Html5QrcodeScanner } from 'html5-qrcode'
 import { toast } from 'react-toastify'
 import PageHeader from '../../components/PageHeader'
 import api from '../../api'
@@ -12,10 +14,57 @@ export default function JoinQueue() {
   const [joined, setJoined] = useState(false)
   const [token, setToken] = useState(null)
   const [loadingServices, setLoadingServices] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   useEffect(() => {
     api.get('/business').then(res => setBusinesses(res.data.data)).catch(() => toast.error('Failed to load businesses'))
-  }, [])
+    
+    // Auto-join from URL if parameters exist
+    const qBusinessId = searchParams.get('businessId')
+    const qServiceId = searchParams.get('serviceId')
+    
+    if (qBusinessId && qServiceId) {
+      handleAutoJoin(qBusinessId, qServiceId)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!showScanner) return
+    const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false)
+    scanner.render((decodedText) => {
+      scanner.clear()
+      setShowScanner(false)
+      try {
+        const url = new URL(decodedText)
+        const bId = url.searchParams.get('businessId')
+        const sId = url.searchParams.get('serviceId')
+        if (bId && sId) handleAutoJoin(bId, sId)
+        else toast.error('Invalid QR code format')
+      } catch {
+        toast.error('Invalid QR code URL')
+      }
+    }, (err) => {})
+
+    return () => { scanner.clear().catch(e => {}) }
+  }, [showScanner])
+
+  const handleAutoJoin = async (bId, sId) => {
+    try {
+      const res = await api.post('/queue/token', { businessId: bId, serviceId: sId })
+      setToken(res.data.data)
+      setJoined(true)
+      toast.success(`Queue joined! Token: #${res.data.data.tokenNumber}`)
+      // Redirect to status page for best experience
+      setTimeout(() => {
+        localStorage.setItem('activeTokenId', res.data.data._id)
+        navigate('/customer/queue-status')
+      }, 2000)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to auto-join queue')
+    }
+  }
 
   const selectBusiness = async (b) => {
     setSelected(b)
@@ -61,7 +110,30 @@ export default function JoinQueue() {
 
   return (
     <div className="max-w-2xl">
-      <PageHeader title="Join Queue" subtitle="Select a business and walk right in" />
+      <div className="flex justify-between items-start mb-6">
+        <PageHeader title="Join Queue" subtitle="Select a business or scan a QR code" />
+        {!selected && (
+          <button 
+            onClick={() => setShowScanner(true)}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition"
+          >
+            <QrCode size={16} /> Scan QR
+          </button>
+        )}
+      </div>
+
+      {showScanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full relative">
+            <button onClick={() => setShowScanner(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-50">
+              <X size={24} />
+            </button>
+            <h3 className="text-xl font-bold text-slate-900 mb-4 text-center">Scan Department QR</h3>
+            <div id="reader" className="w-full overflow-hidden rounded-xl border-2 border-indigo-100"></div>
+            <p className="text-xs text-slate-500 text-center mt-4">Point your camera at the Receptionist's screen to instantly join the correct queue.</p>
+          </div>
+        </div>
+      )}
       {!selected ? (
         <>
           <div className="relative mb-4">

@@ -1,6 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 
+// Core Pages
+import Home from './pages/Home'
+
 // Auth Pages
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -110,9 +113,9 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* Default Routes */}
+      <Route path="/" element={<Home />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

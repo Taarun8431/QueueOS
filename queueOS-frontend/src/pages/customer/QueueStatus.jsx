@@ -104,8 +104,18 @@ export default function QueueStatus() {
               <div>
                 <p className="text-4xl font-black">#{tokenData.tokenNumber}</p>
                 <p className="text-white/90 text-sm mt-1 capitalize">Status: {tokenData.status === 'served' ? 'Completed' : tokenData.status}</p>
+                
                 {tokenData.position > 0 && (
-                  <p className="text-white/90 text-sm">Position #{tokenData.position} in queue</p>
+                  <div className="mt-4 bg-white/20 rounded-xl p-3 inline-block">
+                    <p className="text-white text-sm font-bold">
+                      {tokenData.position - 1 === 0 ? "You are next in line!" : `There are ${tokenData.position - 1} people ahead of you.`}
+                    </p>
+                    {tokenData.estimatedWaitTime > 0 && (
+                      <p className="text-white/90 text-xs mt-1">
+                        Estimated wait time: ~{tokenData.estimatedWaitTime} minutes
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
               {tokenData.status === 'called' && (

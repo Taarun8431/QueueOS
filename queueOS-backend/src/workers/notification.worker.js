@@ -1,18 +1,18 @@
 const { Worker } = require("bullmq");
-const Notification = require(
-  "../models/notification.model"
-);
+const prisma = require("../config/prisma");
 
 const notificationWorker = new Worker(
   "notifications",
   async (job) => {
     const { userId, message, type } = job.data;
 
-    await Notification.create({
-      userId,
-      title: "Queue Update",
-      message,
-      type,
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: "Queue Update",
+        message,
+        type,
+      }
     });
 
     console.log(`[Worker] Notification saved for user ${userId} | type=${type} | msg="${message}"`);

@@ -1,17 +1,20 @@
-const Notification = require("../models/notification.model");
+const prisma = require("../config/prisma");
 const { getPagination, getPaginationMeta } = require("../utils/pagination");
 
 const getMyNotifications = async (req, res) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
+
     const filter = { userId: req.user.userId };
 
     const [notifications, total] = await Promise.all([
-      Notification.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      Notification.countDocuments(filter),
+      prisma.notification.findMany({
+          where: filter,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit
+      }),
+      prisma.notification.count({ where: filter })
     ]);
 
     return res.status(200).json({
@@ -27,12 +30,13 @@ const getMyNotifications = async (req, res) => {
   }
 };
 
-
 const markAsRead = async (req, res) => {
   try {
-    const notification = await Notification.findOne({
-      _id: req.params.id,
-      userId: req.user.userId,
+    const notification = await prisma.notification.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.user.userId,
+      }
     });
 
     if (!notification) {
@@ -42,13 +46,15 @@ const markAsRead = async (req, res) => {
       });
     }
 
-    notification.isRead = true;
-    await notification.save();
+    const updated = await prisma.notification.update({
+        where: { id: notification.id },
+        data: { isRead: true }
+    });
 
     return res.status(200).json({
       success: true,
       message: "Notification marked as read",
-      data: notification,
+      data: updated,
     });
   } catch (error) {
     return res.status(500).json({
@@ -58,15 +64,16 @@ const markAsRead = async (req, res) => {
   }
 };
 
-
 const deleteNotification = async (req, res) => {
   try {
-    const notification = await Notification.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.user.userId,
+    const deleted = await prisma.notification.deleteMany({
+      where: {
+          id: req.params.id,
+          userId: req.user.userId,
+      }
     });
 
-    if (!notification) {
+    if (deleted.count === 0) {
       return res.status(404).json({
         success: false,
         message: "Notification not found",

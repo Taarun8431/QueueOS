@@ -1,11 +1,10 @@
-const Token = require("../models/token.model");
-const Business = require("../models/business.model");
+const prisma = require("../config/prisma");
 
 const getBusinessAnalytics = async (req, res) => {
   try {
     const { businessId } = req.params;
 
-    const business = await Business.findById(businessId);
+    const business = await prisma.business.findUnique({ where: { id: businessId } });
 
     if (!business) {
       return res.status(404).json({
@@ -15,7 +14,7 @@ const getBusinessAnalytics = async (req, res) => {
     }
 
     if (
-      business.ownerId.toString() !== req.user.userId &&
+      business.ownerId !== req.user.userId &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
@@ -24,81 +23,43 @@ const getBusinessAnalytics = async (req, res) => {
       });
     }
 
-    const totalTokensGenerated = await Token.countDocuments({ businessId });
+    const totalTokensGenerated = await prisma.token.count({ where: { businessId } });
 
-    const customersServed = await Token.countDocuments({
-      businessId,
-      status: "served",
+    const customersServed = await prisma.token.count({
+      where: { businessId, status: "served" },
     });
 
-    const noShowCount = await Token.countDocuments({
-      businessId,
-      status: "no_show",
+    const noShowCount = await prisma.token.count({
+      where: { businessId, status: "no_show" },
     });
 
-    const waitingCount = await Token.countDocuments({
-      businessId,
-      status: "waiting",
+    const waitingCount = await prisma.token.count({
+      where: { businessId, status: "waiting" },
     });
 
-    const calledCount = await Token.countDocuments({
-      businessId,
-      status: "called",
+    const calledCount = await prisma.token.count({
+      where: { businessId, status: "called" },
     });
 
     const activeQueueCount = waitingCount + calledCount;
 
-    const avgServiceDurationResult = await Token.aggregate([
-      {
-        $match: {
-          businessId: business._id,
-          status: "served",
-          actualDuration: { $exists: true },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          avgServiceDuration: { $avg: "$actualDuration" },
-        },
-      },
-    ]);
+    const avgResult = await prisma.token.aggregate({
+        where: { businessId: business.id, status: "served", actualDuration: { not: null } },
+        _avg: { actualDuration: true }
+    });
 
-    const avgServiceDuration =
-      avgServiceDurationResult.length > 0
-        ? Number(avgServiceDurationResult[0].avgServiceDuration.toFixed(2))
-        : 0;
+    const avgServiceDuration = avgResult._avg.actualDuration ? Number(avgResult._avg.actualDuration.toFixed(2)) : 0;
 
-    const avgWaitTimeResult = await Token.aggregate([
-      {
-        $match: {
-          businessId: business._id,
-          calledAt: { $exists: true },
-          joinedAt: { $exists: true },
-        },
-      },
-      {
-        $project: {
-          waitTime: {
-            $divide: [
-              { $subtract: ["$calledAt", "$joinedAt"] },
-              1000 * 60,
-            ],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          avgWaitTime: { $avg: "$waitTime" },
-        },
-      },
-    ]);
-
-    const avgWaitTime =
-      avgWaitTimeResult.length > 0
-        ? Number(avgWaitTimeResult[0].avgWaitTime.toFixed(2))
-        : 0;
+    const tokensWithWait = await prisma.token.findMany({
+        where: { businessId: business.id, calledAt: { not: null }, joinedAt: { not: null } },
+        select: { calledAt: true, joinedAt: true }
+    });
+    
+    let totalWaitTime = 0;
+    tokensWithWait.forEach(t => {
+        totalWaitTime += (t.calledAt - t.joinedAt) / (1000 * 60);
+    });
+    const avgWaitTime = tokensWithWait.length > 0 ? Number((totalWaitTime / tokensWithWait.length).toFixed(2)) : 0;
 
     const noShowRate =
       totalTokensGenerated > 0
@@ -129,7 +90,7 @@ const getPeakHoursAnalytics = async (req, res) => {
   try {
     const { businessId } = req.params;
 
-    const business = await Business.findById(businessId);
+    const business = await prisma.business.findUnique({ where: { id: businessId } });
 
     if (!business) {
       return res.status(404).json({
@@ -139,7 +100,7 @@ const getPeakHoursAnalytics = async (req, res) => {
     }
 
     if (
-      business.ownerId.toString() !== req.user.userId &&
+      business.ownerId !== req.user.userId &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
@@ -148,24 +109,21 @@ const getPeakHoursAnalytics = async (req, res) => {
       });
     }
 
-    const peakHours = await Token.aggregate([
-      {
-        $match: {
-          businessId: business._id,
-        },
-      },
-      {
-        $group: {
-          _id: { $hour: "$createdAt" },
-          totalTokens: { $sum: 1 },
-        },
-      },
-      {
-        $sort: {
-          totalTokens: -1,
-        },
-      },
-    ]);
+    const allTokens = await prisma.token.findMany({
+        where: { businessId: business.id },
+        select: { createdAt: true }
+    });
+    
+    const hoursCount = {};
+    allTokens.forEach(t => {
+        const hour = t.createdAt.getHours();
+        hoursCount[hour] = (hoursCount[hour] || 0) + 1;
+    });
+    
+    const peakHours = Object.keys(hoursCount).map(hour => ({
+        _id: parseInt(hour),
+        totalTokens: hoursCount[hour]
+    })).sort((a,b) => b.totalTokens - a.totalTokens);
 
     return res.status(200).json({
       success: true,
@@ -183,7 +141,7 @@ const getServiceAnalytics = async (req, res) => {
   try {
     const { businessId } = req.params;
 
-    const business = await Business.findById(businessId);
+    const business = await prisma.business.findUnique({ where: { id: businessId } });
 
     if (!business) {
       return res.status(404).json({
@@ -193,7 +151,7 @@ const getServiceAnalytics = async (req, res) => {
     }
 
     if (
-      business.ownerId.toString() !== req.user.userId &&
+      business.ownerId !== req.user.userId &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
@@ -202,54 +160,43 @@ const getServiceAnalytics = async (req, res) => {
       });
     }
 
-    const serviceAnalytics = await Token.aggregate([
-      {
-        $match: {
-          businessId: business._id,
-        },
-      },
-      {
-        $group: {
-          _id: "$serviceId",
-          totalTokens: { $sum: 1 },
-          servedCount: {
-            $sum: {
-              $cond: [{ $eq: ["$status", "served"] }, 1, 0],
-            },
-          },
-          noShowCount: {
-            $sum: {
-              $cond: [{ $eq: ["$status", "no_show"] }, 1, 0],
-            },
-          },
-          avgServiceDuration: {
-            $avg: "$actualDuration",
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: "services",
-          localField: "_id",
-          foreignField: "_id",
-          as: "service",
-        },
-      },
-      {
-        $unwind: "$service",
-      },
-      {
-        $project: {
-          serviceName: "$service.serviceName",
-          totalTokens: 1,
-          servedCount: 1,
-          noShowCount: 1,
-          avgServiceDuration: {
-            $ifNull: ["$avgServiceDuration", 0],
-          },
-        },
-      },
-    ]);
+    const tokens = await prisma.token.findMany({
+        where: { businessId: business.id },
+        include: { service: true }
+    });
+    
+    const serviceStats = {};
+    tokens.forEach(t => {
+        if (!serviceStats[t.serviceId]) {
+            serviceStats[t.serviceId] = {
+                _id: t.serviceId,
+                serviceName: t.service ? t.service.serviceName : "Unknown",
+                totalTokens: 0,
+                servedCount: 0,
+                noShowCount: 0,
+                totalDuration: 0,
+                durationCount: 0
+            };
+        }
+        const stat = serviceStats[t.serviceId];
+        stat.totalTokens++;
+        if (t.status === 'served') {
+            stat.servedCount++;
+            if (t.actualDuration) {
+                stat.totalDuration += t.actualDuration;
+                stat.durationCount++;
+            }
+        }
+        if (t.status === 'no_show') stat.noShowCount++;
+    });
+    
+    const serviceAnalytics = Object.values(serviceStats).map(stat => ({
+        serviceName: stat.serviceName,
+        totalTokens: stat.totalTokens,
+        servedCount: stat.servedCount,
+        noShowCount: stat.noShowCount,
+        avgServiceDuration: stat.durationCount > 0 ? stat.totalDuration / stat.durationCount : 0
+    }));
 
     return res.status(200).json({
       success: true,

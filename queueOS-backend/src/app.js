@@ -23,10 +23,10 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Strict rate limit on auth endpoints — brute force protection
-app.use("/api/auth", authLimiter);
+// app.use("/api/auth", authLimiter);
 
 // General rate limit on all other API routes
-app.use("/api", generalLimiter);
+// app.use("/api", generalLimiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/business", businessRoutes);

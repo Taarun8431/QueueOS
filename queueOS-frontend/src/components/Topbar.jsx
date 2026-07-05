@@ -27,7 +27,7 @@ export default function Topbar({ onMenuClick }) {
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}
-          className="lg:hidden rounded-2xl border border-slate-200 bg-white/90 p-2 text-slate-600 shadow-sm transition hover:bg-slate-50"
+          className="rounded-2xl border border-slate-200 bg-white/90 p-2 text-slate-600 shadow-sm transition hover:bg-indigo-50 hover:text-indigo-600"
         >
           <Menu size={20} />
         </button>
