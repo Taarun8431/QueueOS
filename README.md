@@ -1,71 +1,157 @@
-# QueueWISE (QueueOS)
-**Enterprise-Grade Queue Management and Analytics Platform**
 
-QueueWISE is a highly scalable, real-time queue management distributed system architected for massive concurrency. It provides businesses with a resilient infrastructure to manage high-volume customer queues while integrating machine-learning algorithms for predictive wait-time analytics.
+  
+ 🕒 QueueWISE Platform
 
-The system is designed to withstand extreme load spikes ("Thundering Herd" scenarios) by leveraging in-memory caching, distributed locking mechanisms, and graceful fault-tolerance protocols.
+**Intelligent Queue Management & ML-Powered Wait-Time Predictions**
 
----
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![React](https://img.shields.io/badge/React-18-blue)
+![Node](https://img.shields.io/badge/Node-20-green)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-teal)
+![FastAPI](https://img.shields.io/badge/FastAPI-ML-009688)
 
-## Architecture Overview
-The system relies on a microservices-based architecture orchestrated via Docker. 
-* **Primary API Node:** Manages business logic, authentication, and HTTP transaction routing.
-* **Predictive ML Node:** Dedicated service for mathematical regressions and predictive analytics.
-* **Persistent Data Layer:** Handles long-term storage, indexing, and historical analytics.
-* **In-Memory Cache & Message Broker:** Handles session states, rate-limiting, distributed locks, and WebSocket event distribution.
 
-## Technology Stack
-* **Runtime Environments:** Node.js (Express), Python (FastAPI)
-* **Data Persistence:** MongoDB (Compound Indexed)
-* **Caching & IPC:** Redis
-* **Real-Time Communication:** Socket.io (Redis Pub/Sub Adapter)
-* **Containerization & Orchestration:** Docker, Docker Compose
-* **Benchmarking:** Artillery, Autocannon
+
+## 📖 Overview
+
+**QueueWISE** is a modern, full-stack queue management and appointment scheduling platform designed to streamline customer flow for various businesses (Hospitals, Salons, Government Offices, Service Centers, etc.). 
+
+By combining real-time WebSockets, background BullMQ processing, and an intelligent **Machine Learning Service**, QueueWISE dynamically predicts queue wait times based on historical service loads and staff availability.
 
 ---
 
-## Core System Capabilities
+## ✨ Key Features
 
-### 1. High-Concurrency Transaction Integrity
-To handle simultaneous inbound traffic during peak operational hours, the system utilizes Redis `SETNX` distributed locks paired with atomic `INCR` operations. This ensures that concurrent token generation requests are serialized efficiently, preventing race conditions and ensuring database integrity at scale.
-
-### 2. High-Performance Caching Layer
-Read-heavy endpoints, such as real-time queue state retrieval, bypass the primary database. By implementing a Redis caching layer with a strict TTL (Time-To-Live) eviction policy, the system drastically reduces disk I/O, maintaining sub-200ms latencies even under severe load.
-
-### 3. Fault-Tolerant Machine Learning Integration
-The Wait Time Prediction service is decentralized into a separate Python/FastAPI microservice. To prevent single points of failure, the primary Node.js API implements interceptor logic; should the ML service experience an outage, the Node.js API seamlessly falls back to local mathematical averages, ensuring 100% uptime for the end user.
-
-### 4. Infrastructure Resiliency (Graceful Shutdowns)
-QueueWISE is engineered for dynamic cloud environments where horizontal scaling actions frequently terminate instances. The application intercepts OS-level signals (`SIGTERM` / `SIGINT`) to halt incoming traffic, finalize active network requests, and cleanly sever database connections, thereby preventing orphaned locks or corrupted transactions.
-
-### 5. Access Control and Rate Limiting
-The API boundary is protected by strict rate-limiting middlewares to mitigate volumetric DDoS and Brute Force credential stuffing attacks. Internal endpoints are secured via JWT-based Role-Based Access Control (RBAC), firmly isolating business administrative rights from standard staff operational capabilities.
+- **Real-Time Queue Management**: Live token status updates powered by `Socket.io` and Redis.
+- **AI Wait-Time Predictions**: Python-based FastAPI Machine Learning service for dynamic wait-time estimation.
+- **Role-Based Access Control (RBAC)**: Secure access tiers for `Customers`, `Staff` (e.g. Receptionists), `Owners`, and `Admins`.
+- **Background Notification Workers**: Asynchronous push notifications (BullMQ + Redis) for token calls and appointments.
+- **Enterprise Multi-Tenancy**: Built for scale, supporting multiple businesses, customized service types, and dynamic staff assignments.
+- **Seamless Booking**: Easy appointment scheduling with calendar integrations and digital intake forms.
 
 ---
 
-## Performance Benchmarks
-Extensive stress testing was conducted to identify the theoretical limits of the single-threaded Node.js event loop:
-* **Throughput Testing:** Achieved >2,700 Requests Per Second (RPS) on cached read endpoints with 0% error rate.
-* **Saturation Testing:** Subjected the system to a sustained 1,000 concurrent RPS against computationally expensive endpoints to determine CPU saturation thresholds and establish horizontal scaling baselines.
+## 🛠️ Technology Stack
+
+QueueWISE embraces a robust microservice-inspired architecture separated into three distinct domains:
+
+### 1. Frontend Client (`queueOS-frontend`)
+- **Framework**: React 18 + Vite
+- **Styling**: Tailwind CSS + Lucide Icons
+- **State & Routing**: React Router DOM, Context API
+- **Real-Time**: Socket.io-client
+
+### 2. Backend Server (`queueOS-backend`)
+- **Core**: Node.js + Express
+- **Database**: PostgreSQL (with Prisma ORM)
+- **Caching & Pub/Sub**: Redis
+- **Background Jobs**: BullMQ (Notification Workers)
+- **Security**: JWT Authentication, bcrypt, Helmet, rate-limiting
+
+### 3. ML Prediction Service (`queueOS-ml`)
+- **Core**: Python + FastAPI
+- **Model Training**: Scikit-Learn (`wait_time_model.pkl`), Pandas
+- **Server**: Uvicorn
 
 ---
 
-## Local Deployment
+## 📂 Project Structure
 
-The application is containerized for guaranteed environmental consistency.
-
-### Prerequisites
-* Docker Engine
-* Docker Compose
-
-### Initialization
-Execute the following command from the project root to provision and link all microservices:
-```bash
-docker-compose up --build -d
+```text
+QueueWISE/
+├── queueOS-frontend/      # React SPA Application
+│   ├── src/
+│   │   ├── components/    # Reusable UI components
+│   │   ├── pages/         # Route-based page views
+│   │   └── api/           # Axios interceptors and services
+├── queueOS-backend/       # Node.js API Server
+│   ├── prisma/            # PostgreSQL Schema & Migrations
+│   ├── src/
+│   │   ├── controllers/   # Route logic
+│   │   ├── routes/        # Express routers
+│   │   ├── workers/       # BullMQ Background workers
+│   │   └── config/        # Environment & Redis configuration
+└── queueOS-ml/            # Python ML Service
+    ├── api.py             # FastAPI entrypoint
+    ├── train_model.py     # Model generation script
+    └── requirements.txt   # Python dependencies
 ```
 
-**Provisioned Services:**
-1. `queueos_mongo` - Target Port: 27017
-2. `queueos_redis` - Target Port: 6379
-3. `queueos_ml` - Target Port: 8000
-4. `queueos_backend` - Target Port: 5000
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v20+)
+- Python (v3.10+)
+- PostgreSQL Database Server
+- Redis Server (or Cloud Redis URI)
+
+### 1. Database Setup (Backend)
+
+Navigate to the backend directory and configure your environment:
+
+```bash
+cd queueOS-backend
+cp .env.example .env
+# Edit .env with your PostgreSQL and Redis credentials
+```
+
+Install dependencies and run migrations:
+```bash
+npm install
+npx prisma generate
+npx prisma db push
+```
+
+Start the backend server:
+```bash
+npm run dev
+```
+
+### 2. ML Service Setup (Python)
+
+Navigate to the ML service directory and set up the Python environment:
+
+```bash
+cd queueOS-ml
+python -m venv venv
+source venv/bin/activate  # (On Windows: venv\Scripts\activate)
+pip install -r requirements.txt
+```
+
+Start the prediction API:
+```bash
+python -m uvicorn api:app --reload
+```
+
+### 3. Frontend Setup (React)
+
+Navigate to the frontend directory:
+
+```bash
+cd queueOS-frontend
+npm install
+```
+
+Start the development server:
+```bash
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173`.
+
+---
+
+## 📚 Documentation
+
+For a deeper dive into the technical details of the platform, please refer to the following documentation files:
+
+- [**ARCHITECTURE.md**](./ARCHITECTURE.md): Detailed system design, data flow, and component relationships.
+- [**API.md**](./API.md): Comprehensive REST API endpoint reference and authentication guides.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
