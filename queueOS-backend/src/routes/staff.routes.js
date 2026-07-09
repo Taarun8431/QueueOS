@@ -8,6 +8,8 @@ const {
     getStaffForBusiness,
     getMyAssignment,
     createAndAssignStaff,
+    getDoctorsByRole,
+    getDoctorAvailability,
 } = require("../controllers/staff.controller");
 
 const protect = require("../middlewares/auth.middleware");
@@ -50,6 +52,18 @@ router.get(
     protect,
     authorizeRoles("staff"),
     getMyAssignment
+);
+
+router.get(
+    "/role",
+    protect,
+    getDoctorsByRole
+);
+
+router.get(
+    "/availability",
+    protect,
+    getDoctorAvailability
 );
 
 module.exports = router;

@@ -4,12 +4,12 @@ const { client: redisClient } = require("../config/redis");
 
 const createAppointment = async (req, res) => {
     try {
-        const { businessId, serviceId, appointmentDate, appointmentTime } = req.body;
+        const { businessId, serviceId, staffId, appointmentDate, appointmentTime, intakeForm } = req.body;
 
-        if (!businessId || !serviceId || !appointmentDate || !appointmentTime) {
+        if (!businessId || !serviceId || !staffId || !appointmentDate || !appointmentTime) {
             return res.status(400).json({
                 success: false,
-                message: "Business, service, appointment date and time are required",
+                message: "Business, service, staff, appointment date and time are required",
             });
         }
 
@@ -39,6 +39,7 @@ const createAppointment = async (req, res) => {
             where: {
                 businessId,
                 serviceId,
+                staffId,
                 appointmentDate: new Date(appointmentDate),
                 appointmentTime,
                 status: "scheduled",
@@ -57,9 +58,11 @@ const createAppointment = async (req, res) => {
                 userId: req.user.userId,
                 businessId,
                 serviceId,
+                staffId,
                 appointmentDate: new Date(appointmentDate),
                 appointmentTime,
                 status: "scheduled",
+                intakeForm: intakeForm || {},
             }
         });
 
@@ -415,6 +418,46 @@ const checkInAppointment = async (req, res) => {
     }
 };
 
+const getBookedSlots = async (req, res) => {
+    try {
+        const { businessId, serviceId, date, staffId } = req.query;
+
+        if (!businessId || !serviceId || !date || !staffId) {
+            return res.status(400).json({
+                success: false,
+                message: "businessId, serviceId, date, and staffId are required query parameters",
+            });
+        }
+
+        const bookedAppointments = await prisma.appointment.findMany({
+            where: {
+                businessId,
+                serviceId,
+                staffId,
+                appointmentDate: new Date(date),
+                status: {
+                    in: ["scheduled", "checked_in"]
+                }
+            },
+            select: {
+                appointmentTime: true
+            }
+        });
+
+        const bookedSlots = bookedAppointments.map(app => app.appointmentTime);
+
+        return res.status(200).json({
+            success: true,
+            data: bookedSlots,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
 module.exports = {
     createAppointment,
     getMyAppointments,
@@ -423,4 +466,5 @@ module.exports = {
     cancelAppointment,
     rescheduleAppointment,
     checkInAppointment,
+    getBookedSlots,
 };

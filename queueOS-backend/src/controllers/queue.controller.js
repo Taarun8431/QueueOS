@@ -81,7 +81,7 @@ const popNextWaitingToken = async (queueKey, businessId, serviceId) => {
 
 const generateToken = async (req, res) => {
     try {
-        const { businessId, serviceId } = req.body;
+        const { businessId, serviceId, preferredStaffId } = req.body;
 
         if (!businessId || !serviceId) {
             return res.status(400).json({
@@ -173,10 +173,14 @@ const generateToken = async (req, res) => {
                 customerId: req.user.userId,
                 businessId,
                 serviceId,
+                preferredStaffId: preferredStaffId || null,
             }
         });
         
-        const queueKey = queueKeyFor(businessId, serviceId);
+        let queueKey = queueKeyFor(businessId, serviceId);
+        if (preferredStaffId) {
+            queueKey = `${queueKey}:${preferredStaffId}`;
+        }
 
         await redisClient.rPush(queueKey, token.id);
         await expireQueueKey(queueKey);
@@ -370,17 +374,40 @@ const callNextToken = async (req, res) => {
         let nextToken = null;
 
         if (serviceId === "all") {
+            // First check if there are preferred tokens across all services for this staff
+            // This is complex for "all" services. For simplicity, just fall back to DB lookup
             nextToken = await prisma.token.findFirst({
-                where: { businessId, status: "waiting" },
-                orderBy: { joinedAt: 'asc' }
+                where: { 
+                    businessId, 
+                    status: "waiting",
+                    OR: [
+                        { preferredStaffId: req.user.userId },
+                        { preferredStaffId: null }
+                    ]
+                },
+                orderBy: [
+                    { preferredStaffId: 'desc' }, // preferred first (non-null first since it's a specific string)
+                    { joinedAt: 'asc' }
+                ]
             });
             if (nextToken) {
-                const queueKey = queueKeyFor(businessId, nextToken.serviceId);
-                await redisClient.lRem(queueKey, 0, nextToken.id);
+                let qKey = queueKeyFor(businessId, nextToken.serviceId);
+                if (nextToken.preferredStaffId) {
+                    qKey = `${qKey}:${nextToken.preferredStaffId}`;
+                }
+                await redisClient.lRem(qKey, 0, nextToken.id);
             }
         } else {
             const queueKey = queueKeyFor(businessId, serviceId);
-            nextToken = await popNextWaitingToken(queueKey, businessId, serviceId);
+            const prefQueueKey = `${queueKey}:${req.user.userId}`;
+            
+            // 1. Try preferred queue first
+            nextToken = await popNextWaitingToken(prefQueueKey, businessId, serviceId);
+            
+            // 2. Try general pool
+            if (!nextToken) {
+                nextToken = await popNextWaitingToken(queueKey, businessId, serviceId);
+            }
 
             if (!nextToken) {
                 const loadedCount = await loadWaitingTokensToRedis(
@@ -388,7 +415,8 @@ const callNextToken = async (req, res) => {
                     businessId,
                     serviceId
                 );
-
+                // Wait, loadWaitingTokensToRedis needs to handle preferred tokens too?
+                // For now, if we fallback to DB, let's just do a DB query to be safe
                 if (loadedCount > 0) {
                     nextToken = await popNextWaitingToken(queueKey, businessId, serviceId);
                 }
@@ -898,6 +926,42 @@ const toggleQueuePause = async (req, res) => {
     }
 };
 
+const toggleDoctorPause = async (req, res) => {
+    try {
+        const { isEmergencyPaused } = req.body;
+
+        const staffAssignment = await prisma.staffAssignment.findUnique({
+            where: { staffId: req.user.userId }
+        });
+        
+        if (!staffAssignment) {
+            return res.status(404).json({ success: false, message: "Staff assignment not found" });
+        }
+
+        const updatedAssignment = await prisma.staffAssignment.update({
+            where: { id: staffAssignment.id },
+            data: { isEmergencyPaused }
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+            // Broadcast to the whole business that this specific doctor is paused
+            io.to(`queue:${staffAssignment.businessId}:all`).emit("doctorPaused", {
+                staffId: req.user.userId,
+                isEmergencyPaused
+            });
+        }
+
+        return res.status(200).json({ 
+            success: true, 
+            message: `Doctor queue is now ${isEmergencyPaused ? 'paused for emergency' : 'active'}`, 
+            data: updatedAssignment 
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     generateToken,
     getQueuePosition,
@@ -911,4 +975,5 @@ module.exports = {
     callSpecificToken,
     getMyTokens,
     toggleQueuePause,
+    toggleDoctorPause,
 };

@@ -10,6 +10,7 @@ const {
     cancelAppointment,
     rescheduleAppointment,
     checkInAppointment,
+    getBookedSlots,
 } = require("../controllers/appointment.controller");
 
 const protect = require("../middlewares/auth.middleware");
@@ -37,6 +38,12 @@ router.get(
 );
 
 router.get("/:id", protect, getAppointmentById);
+
+router.get(
+    "/slots/booked",
+    protect,
+    getBookedSlots
+);
 
 router.put(
     "/:id/cancel",

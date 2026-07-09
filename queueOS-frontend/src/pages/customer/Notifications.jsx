@@ -24,14 +24,14 @@ export default function CustomerNotifications() {
   const markRead = async (id) => {
     try {
       await api.put(`/notifications/${id}/read`)
-      setNotes(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n))
+      setNotes(prev => prev.map(n => (n.id || n._id) === id ? { ...n, isRead: true } : n))
     } catch {}
   }
 
   const deleteNote = async (id) => {
     try {
       await api.delete(`/notifications/${id}`)
-      setNotes(prev => prev.filter(n => n._id !== id))
+      setNotes(prev => prev.filter(n => (n.id || n._id) !== id))
     } catch { toast.error('Delete failed') }
   }
 
@@ -55,7 +55,7 @@ export default function CustomerNotifications() {
           {notes.map(n => {
             const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.system
             return (
-              <div key={n._id} onClick={() => markRead(n._id)}
+              <div key={n.id || n._id} onClick={() => markRead(n.id || n._id)}
                 className={`card flex items-start gap-3 cursor-pointer ${!n.isRead ? 'border-l-4 border-l-primary-500' : ''}`}>
                 <div className={`p-2 rounded-xl flex-shrink-0 ${cfg.color}`}><cfg.icon size={16} /></div>
                 <div className="flex-1 min-w-0">
@@ -64,7 +64,7 @@ export default function CustomerNotifications() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {!n.isRead && <span className="w-2 h-2 bg-primary-500 rounded-full" />}
-                  <button onClick={e => { e.stopPropagation(); deleteNote(n._id) }}
+                  <button onClick={e => { e.stopPropagation(); deleteNote(n.id || n._id) }}
                     className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                     <Trash2 size={13} />
                   </button>

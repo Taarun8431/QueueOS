@@ -5,9 +5,9 @@ import { toast } from 'react-toastify'
 import { useState } from 'react'
 
 const ROLE_BADGE = {
-  customer: 'bg-blue-100 text-blue-700',
+  customer: 'bg-primary-100 text-primary-800',
   owner:    'bg-purple-100 text-purple-700',
-  staff:    'bg-emerald-100 text-emerald-700',
+  staff:    'bg-secondary-100 text-secondary-800',
   admin:    'bg-rose-100 text-rose-700',
 }
 
@@ -27,7 +27,7 @@ export default function Topbar({ onMenuClick }) {
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}
-          className="rounded-2xl border border-slate-200 bg-white/90 p-2 text-slate-600 shadow-sm transition hover:bg-indigo-50 hover:text-indigo-600"
+          className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-primary-50 hover:text-primary-700"
         >
           <Menu size={20} />
         </button>

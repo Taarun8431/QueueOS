@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 
 const assignStaff = async (req, res) => {
     try {
-        const { staffId, businessId } = req.body;
+        const { staffId, businessId, roleType } = req.body;
 
         if (!staffId || !businessId) {
             return res.status(400).json({
@@ -64,6 +64,7 @@ const assignStaff = async (req, res) => {
                     businessId,
                     assignedById: req.user.userId,
                     isActive: true,
+                    ...(roleType && { roleType })
                 }
             });
         } else {
@@ -73,6 +74,7 @@ const assignStaff = async (req, res) => {
                     businessId,
                     assignedById: req.user.userId,
                     isActive: true,
+                    ...(roleType && { roleType })
                 }
             });
         }
@@ -230,7 +232,7 @@ const getMyAssignment = async (req, res) => {
 
 const createAndAssignStaff = async (req, res) => {
     try {
-        const { name, phone, businessId } = req.body;
+        const { name, phone, businessId, roleType } = req.body;
 
         if (!name || !businessId) {
             return res.status(400).json({
@@ -285,6 +287,7 @@ const createAndAssignStaff = async (req, res) => {
                 businessId,
                 assignedById: req.user.userId,
                 isActive: true,
+                ...(roleType && { roleType })
             }
         });
 
@@ -307,4 +310,131 @@ const createAndAssignStaff = async (req, res) => {
     }
 };
 
-module.exports = { assignStaff, unassignStaff, getStaffForBusiness, getMyAssignment, createAndAssignStaff };
+const getDoctorsByRole = async (req, res) => {
+    try {
+        const { businessId, roleType } = req.query; // roleType can be OPD_Doctor or Appointment_Doctor
+
+        if (!businessId || !roleType) {
+            return res.status(400).json({
+                success: false,
+                message: "businessId and roleType are required"
+            });
+        }
+
+        const staffAssignments = await prisma.staffAssignment.findMany({
+            where: {
+                businessId,
+                roleType,
+                isActive: true
+            },
+            include: {
+                staff: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true
+                    }
+                }
+            }
+        });
+
+        // Add emergency status flag
+        const doctors = staffAssignments.map(assignment => ({
+            ...assignment.staff,
+            isEmergencyPaused: assignment.isEmergencyPaused
+        }));
+
+        return res.status(200).json({
+            success: true,
+            data: doctors
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+const getDoctorAvailability = async (req, res) => {
+    try {
+        const { staffId, businessId, date } = req.query;
+
+        if (!staffId || !businessId || !date) {
+            return res.status(400).json({
+                success: false,
+                message: "staffId, businessId, and date are required"
+            });
+        }
+
+        const targetDate = new Date(date);
+        const dayOfWeek = targetDate.getDay();
+
+        // 1. Get the schedule for this day
+        const schedule = await prisma.staffSchedule.findFirst({
+            where: {
+                staffId,
+                businessId,
+                dayOfWeek,
+                isActive: true
+            }
+        });
+
+        if (!schedule) {
+            return res.status(200).json({
+                success: true,
+                message: "Doctor is not scheduled on this day",
+                data: []
+            });
+        }
+
+        // 2. Generate all possible time slots for the schedule
+        const availableSlots = [];
+        const startParts = schedule.startTime.split(':');
+        const endParts = schedule.endTime.split(':');
+        
+        let currentSlot = new Date(targetDate);
+        currentSlot.setHours(parseInt(startParts[0]), parseInt(startParts[1]), 0, 0);
+        
+        const endTime = new Date(targetDate);
+        endTime.setHours(parseInt(endParts[0]), parseInt(endParts[1]), 0, 0);
+
+        while (currentSlot < endTime) {
+            const timeString = currentSlot.toTimeString().substring(0, 5); // HH:MM
+            availableSlots.push(timeString);
+            
+            // Increment by slot duration
+            currentSlot.setMinutes(currentSlot.getMinutes() + schedule.slotDuration);
+        }
+
+        // 3. Find booked appointments for this doctor on this day
+        const bookedAppointments = await prisma.appointment.findMany({
+            where: {
+                staffId,
+                businessId,
+                appointmentDate: targetDate,
+                status: {
+                    in: ["scheduled", "checked_in"]
+                }
+            }
+        });
+
+        const bookedTimes = new Set(bookedAppointments.map(app => app.appointmentTime));
+
+        // 4. Filter out booked slots
+        const finalAvailableSlots = availableSlots.filter(slot => !bookedTimes.has(slot));
+
+        return res.status(200).json({
+            success: true,
+            data: finalAvailableSlots
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+module.exports = { assignStaff, unassignStaff, getStaffForBusiness, getMyAssignment, createAndAssignStaff, getDoctorsByRole, getDoctorAvailability };

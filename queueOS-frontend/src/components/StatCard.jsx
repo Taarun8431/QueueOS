@@ -1,12 +1,12 @@
-export default function StatCard({ title, value, icon: Icon, color = 'blue', change, sub }) {
+export default function StatCard({ title, value, icon: Icon, color = 'primary', change, sub }) {
   const colors = {
-    blue:   { bg: 'bg-blue-50',   icon: 'bg-blue-100 text-blue-600',   text: 'text-blue-600' },
-    green:  { bg: 'bg-green-50',  icon: 'bg-green-100 text-green-600',  text: 'text-green-600' },
-    purple: { bg: 'bg-purple-50', icon: 'bg-purple-100 text-purple-600', text: 'text-purple-600' },
-    orange: { bg: 'bg-orange-50', icon: 'bg-orange-100 text-orange-600', text: 'text-orange-600' },
-    red:    { bg: 'bg-red-50',    icon: 'bg-red-100 text-red-600',    text: 'text-red-600' },
+    primary:   { bg: 'bg-primary-50',   icon: 'bg-primary-100 text-primary-600',   text: 'text-primary-600' },
+    secondary: { bg: 'bg-secondary-50', icon: 'bg-secondary-100 text-secondary-600', text: 'text-secondary-600' },
+    purple:    { bg: 'bg-purple-50',    icon: 'bg-purple-100 text-purple-600', text: 'text-purple-600' },
+    orange:    { bg: 'bg-orange-50',    icon: 'bg-orange-100 text-orange-600', text: 'text-orange-600' },
+    red:       { bg: 'bg-red-50',       icon: 'bg-red-100 text-red-600',    text: 'text-red-600' },
   }
-  const c = colors[color] || colors.blue
+  const c = colors[color] || colors.primary
 
   return (
     <div className="card flex items-start justify-between">

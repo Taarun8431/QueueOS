@@ -1,27 +1,34 @@
 import { useState, useEffect, useRef } from 'react'
-import { Building2, Clock, Search, Users, ChevronRight, QrCode, Camera, X } from 'lucide-react'
+import { Building2, Clock, Search, Users, ChevronRight, QrCode, Camera, X, User } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Html5QrcodeScanner } from 'html5-qrcode'
 import { toast } from 'react-toastify'
+import { motion, AnimatePresence } from 'framer-motion'
 import PageHeader from '../../components/PageHeader'
 import api from '../../api'
 
 export default function JoinQueue() {
   const [businesses, setBusinesses] = useState([])
   const [services, setServices] = useState([])
+  const [doctors, setDoctors] = useState([])
+  
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState(null)
+  const [selectedBusiness, setSelectedBusiness] = useState(null)
+  const [selectedService, setSelectedService] = useState(null)
+  
   const [joined, setJoined] = useState(false)
   const [token, setToken] = useState(null)
+  
   const [loadingServices, setLoadingServices] = useState(false)
+  const [loadingDoctors, setLoadingDoctors] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
+  
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
   useEffect(() => {
-    api.get('/business').then(res => setBusinesses(res.data.data)).catch(() => toast.error('Failed to load businesses'))
+    api.get('/business').then(res => setBusinesses(res.data.data)).catch(() => toast.error('Failed to load departments'))
     
-    // Auto-join from URL if parameters exist
     const qBusinessId = searchParams.get('businessId')
     const qServiceId = searchParams.get('serviceId')
     
@@ -55,8 +62,7 @@ export default function JoinQueue() {
       const res = await api.post('/queue/token', { businessId: bId, serviceId: sId })
       setToken(res.data.data)
       setJoined(true)
-      toast.success(`Queue joined! Token: #${res.data.data.tokenNumber}`)
-      // Redirect to status page for best experience
+      toast.success(`Walk-in registered! Token: #${res.data.data.tokenNumber}`)
       setTimeout(() => {
         localStorage.setItem('activeTokenId', res.data.data._id)
         navigate('/customer/queue-status')
@@ -67,7 +73,7 @@ export default function JoinQueue() {
   }
 
   const selectBusiness = async (b) => {
-    setSelected(b)
+    setSelectedBusiness(b)
     setLoadingServices(true)
     try {
       const res = await api.get(`/services/business/${b._id}`)
@@ -79,14 +85,31 @@ export default function JoinQueue() {
     }
   }
 
-  const handleJoin = async (service) => {
+  const handleServiceSelect = async (service) => {
+    setSelectedService(service)
+    setLoadingDoctors(true)
     try {
-      const res = await api.post('/queue/token', { businessId: selected._id, serviceId: service._id })
+      const res = await api.get(`/staff/role?businessId=${selectedBusiness._id}&roleType=OPD_Doctor`)
+      setDoctors(res.data.data)
+    } catch (err) {
+      toast.error('Failed to load OPD doctors')
+    } finally {
+      setLoadingDoctors(false)
+    }
+  }
+
+  const handleJoin = async (preferredStaffId = null) => {
+    try {
+      const payload = { businessId: selectedBusiness._id, serviceId: selectedService._id }
+      if (preferredStaffId) {
+        payload.preferredStaffId = preferredStaffId
+      }
+      const res = await api.post('/queue/token', payload)
       setToken(res.data.data)
       setJoined(true)
-      toast.success(`Queue joined! Token: #${res.data.data.tokenNumber}`)
+      toast.success(`Walk-in registered! Token: #${res.data.data.tokenNumber}`)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to join queue')
+      toast.error(err.response?.data?.message || 'Failed to register walk-in')
     }
   }
 
@@ -95,27 +118,27 @@ export default function JoinQueue() {
 
   if (joined && token) {
     return (
-      <div className="max-w-md mx-auto">
-        <div className="card text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl font-black text-green-600">#{token.tokenNumber}</span>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md mx-auto mt-10">
+        <div className="card text-center border-t-4 border-t-secondary-500">
+          <div className="w-20 h-20 bg-secondary-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-secondary-200">
+            <span className="text-3xl font-black text-secondary-600">#{token.tokenNumber}</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">You're in the queue!</h2>
-          <p className="text-gray-500 text-sm mb-6">{selected.businessName}</p>
-          <button onClick={() => { setJoined(false); setSelected(null); setToken(null) }} className="btn-secondary w-full">Join Another Queue</button>
+          <h2 className="text-xl font-bold text-primary-900 mb-1">Walk-in Registered</h2>
+          <p className="text-slate-500 text-sm mb-6">{selectedBusiness.businessName}</p>
+          <button onClick={() => { setJoined(false); setSelectedBusiness(null); setSelectedService(null); setToken(null) }} className="btn-secondary w-full">Join Another</button>
         </div>
-      </div>
+      </motion.div>
     )
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <div className="flex justify-between items-start mb-6">
-        <PageHeader title="Join Queue" subtitle="Select a business or scan a QR code" />
-        {!selected && (
+        <PageHeader title="Walk-In Registration" subtitle="Select a department or scan a QR code to register." />
+        {!selectedBusiness && (
           <button 
             onClick={() => setShowScanner(true)}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition"
+            className="flex items-center gap-2 bg-primary-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-premium hover:bg-primary-800 transition-all hover:-translate-y-0.5"
           >
             <QrCode size={16} /> Scan QR
           </button>
@@ -124,70 +147,112 @@ export default function JoinQueue() {
 
       {showScanner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full relative">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full relative shadow-premium">
             <button onClick={() => setShowScanner(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-50">
               <X size={24} />
             </button>
-            <h3 className="text-xl font-bold text-slate-900 mb-4 text-center">Scan Department QR</h3>
-            <div id="reader" className="w-full overflow-hidden rounded-xl border-2 border-indigo-100"></div>
-            <p className="text-xs text-slate-500 text-center mt-4">Point your camera at the Receptionist's screen to instantly join the correct queue.</p>
+            <h3 className="text-xl font-bold text-primary-900 mb-4 text-center">Scan Department QR</h3>
+            <div id="reader" className="w-full overflow-hidden rounded-2xl border-2 border-primary-100"></div>
+            <p className="text-xs text-slate-500 text-center mt-4">Point your camera at the Receptionist's screen to instantly register.</p>
           </div>
         </div>
       )}
-      {!selected ? (
-        <>
-          <div className="relative mb-4">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input placeholder="Search businesses..." value={search} onChange={e => setSearch(e.target.value)} className="input-field pl-9" />
-          </div>
-          <div className="space-y-3">
-            {filtered.map(b => (
-              <button key={b._id} onClick={() => selectBusiness(b)}
-                className="card w-full flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer text-left">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center">
-                    <Building2 size={18} className="text-primary-600" />
+      
+      <AnimatePresence mode="wait">
+        {!selectedBusiness ? (
+          <motion.div key="step1" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}>
+            <div className="relative mb-6">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input placeholder="Search departments..." value={search} onChange={e => setSearch(e.target.value)} className="input-field pl-11 py-3.5" />
+            </div>
+            <div className="space-y-3">
+              {filtered.map(b => (
+                <button key={b.id || b._id} onClick={() => selectBusiness(b)}
+                  className="card w-full flex items-center justify-between hover:shadow-premium cursor-pointer text-left group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-primary-50 rounded-2xl flex items-center justify-center transition-colors group-hover:bg-primary-100">
+                      <Building2 size={20} className="text-primary-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-primary-900">{b.businessName}</p>
+                      <span className="text-xs text-slate-500 font-medium">{b.category}</span>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">{b.businessName}</p>
-                    <span className="text-xs text-gray-400">{b.category}</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-gray-400" />
-              </button>
-            ))}
-            {filtered.length === 0 && <p className="text-gray-400 text-sm text-center py-8">No businesses found.</p>}
-          </div>
-        </>
-      ) : (
-        <>
-          <button onClick={() => setSelected(null)} className="text-primary-600 text-sm mb-4">← Back to businesses</button>
-          <div className="card mb-4">
-            <p className="font-semibold text-gray-900">{selected.businessName}</p>
-            <p className="text-xs text-gray-400">{selected.category} · {selected.address}</p>
-          </div>
-          <p className="text-sm font-medium text-gray-700 mb-3">Select a service to join:</p>
-          {loadingServices ? <p className="text-gray-400">Loading services...</p> : (
-            <div className="space-y-2">
-              {services.map(s => (
-                <button key={s._id} onClick={() => s.isActive && handleJoin(s)}
-                  className={`card w-full flex items-center justify-between transition-shadow text-left ${s.isActive ? 'hover:shadow-md cursor-pointer' : 'opacity-75 cursor-not-allowed'}`}>
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">{s.serviceName}</p>
-                    <p className="text-xs text-gray-400">{s.estimatedDuration} min · {s.price === 0 ? 'Free' : `$${s.price}`}</p>
-                  </div>
-                  {s.isActive ? (
-                    <span className="btn-primary text-xs py-1.5 px-3">Join</span>
-                  ) : (
-                    <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded">Unavailable</span>
-                  )}
+                  <ChevronRight size={18} className="text-slate-300 group-hover:text-primary-600 transition-colors" />
                 </button>
               ))}
-              {services.length === 0 && <p className="text-gray-400 text-sm">No services available.</p>}
+              {filtered.length === 0 && <p className="text-slate-400 text-sm text-center py-10 font-medium">No departments found.</p>}
             </div>
-          )}
-        </>
-      )}
+          </motion.div>
+        ) : !selectedService ? (
+          <motion.div key="step2" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}>
+            <button onClick={() => setSelectedBusiness(null)} className="text-primary-600 text-sm mb-4 font-semibold hover:underline">← Back to departments</button>
+            <div className="card mb-6 border-l-4 border-l-primary-500">
+              <p className="font-bold text-primary-900 text-lg">{selectedBusiness.businessName}</p>
+              <p className="text-xs text-slate-500 font-medium">{selectedBusiness.category} · {selectedBusiness.address}</p>
+            </div>
+            <p className="text-sm font-semibold text-slate-700 mb-4">Select reason for visit:</p>
+            {loadingServices ? <p className="text-slate-400 font-medium text-sm">Loading services...</p> : (
+              <div className="space-y-3">
+                {services.map(s => (
+                  <button key={s.id || s._id} onClick={() => s.isActive && handleServiceSelect(s)}
+                    className={`card w-full flex items-center justify-between text-left group ${s.isActive ? 'hover:shadow-premium cursor-pointer' : 'opacity-60 cursor-not-allowed bg-slate-50'}`}>
+                    <div>
+                      <p className="font-semibold text-primary-900">{s.serviceName}</p>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">{s.estimatedDuration} min</p>
+                    </div>
+                    {s.isActive ? (
+                      <ChevronRight size={18} className="text-slate-300 group-hover:text-primary-600 transition-colors" />
+                    ) : (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-2 py-1 rounded-md border border-red-100">Unavailable</span>
+                    )}
+                  </button>
+                ))}
+                {services.length === 0 && <p className="text-slate-400 text-sm font-medium py-6 text-center">No services available.</p>}
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div key="step3" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
+             <button onClick={() => setSelectedService(null)} className="text-primary-600 text-sm mb-4 font-semibold hover:underline">← Back to services</button>
+             <div className="card mb-6 border-l-4 border-l-primary-500">
+                <p className="font-bold text-primary-900 text-lg">{selectedService.serviceName}</p>
+                <p className="text-xs text-slate-500 font-medium">{selectedBusiness.businessName}</p>
+             </div>
+
+             <p className="text-sm font-semibold text-slate-700 mb-4">Select your preferred doctor (Optional):</p>
+             {loadingDoctors ? <p className="text-slate-400 font-medium text-sm">Loading doctors...</p> : (
+               <div className="space-y-3">
+                  <button onClick={() => handleJoin(null)} className="card w-full flex items-center gap-4 hover:border-primary-300 hover:bg-primary-50/30 transition-all text-left">
+                     <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">
+                       <Clock size={20} className="text-slate-500" />
+                     </div>
+                     <div>
+                       <p className="font-bold text-slate-900">Next Available Doctor</p>
+                       <p className="text-xs text-slate-500 mt-0.5">Fastest option</p>
+                     </div>
+                  </button>
+                  
+                  {doctors.map(doc => (
+                    <button key={doc.id} onClick={() => handleJoin(doc.id)} className="card w-full flex items-center gap-4 hover:border-primary-300 transition-all text-left group">
+                       <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
+                         <User size={20} className="text-primary-700" />
+                       </div>
+                       <div className="flex-1">
+                         <p className="font-bold text-primary-900">{doc.name}</p>
+                         <p className="text-xs text-slate-500 mt-0.5">OPD Specialist</p>
+                       </div>
+                       {doc.isEmergencyPaused && (
+                         <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-100 mr-2">Busy</span>
+                       )}
+                       <ChevronRight size={18} className="text-slate-300 group-hover:text-primary-600" />
+                    </button>
+                  ))}
+               </div>
+             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

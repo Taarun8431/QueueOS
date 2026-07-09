@@ -44,6 +44,11 @@ enum NotificationType {
   system
 }
 
+enum StaffRoleType {
+  OPD_Doctor
+  Appointment_Doctor
+}
+
 model User {
   id               String            @id @default(uuid())
   name             String
@@ -63,6 +68,9 @@ model User {
   refreshTokens    RefreshToken[]
   staffAssignments StaffAssignment[] @relation("StaffAssigned")
   assignedByMe     StaffAssignment[] @relation("AssignedBy")
+  appointmentDoctor Appointment[]    @relation("AppointmentDoctor")
+  preferredDoctor   Token[]          @relation("PreferredDoctor")
+  staffSchedules    StaffSchedule[]
 }
 
 model Business {
@@ -85,6 +93,7 @@ model Business {
   appointments     Appointment[]
   tokens           Token[]
   staffAssignments StaffAssignment[]
+  staffSchedules   StaffSchedule[]
 }
 
 model Service {
@@ -113,6 +122,9 @@ model Appointment {
   business         Business          @relation(fields: [businessId], references: [id])
   serviceId        String
   service          Service           @relation(fields: [serviceId], references: [id])
+  staffId          String?
+  staff            User?             @relation("AppointmentDoctor", fields: [staffId], references: [id])
+  intakeForm       Json?
   appointmentDate  DateTime
   appointmentTime  String
   status           AppointmentStatus @default(scheduled)
@@ -133,6 +145,8 @@ model Token {
   business         Business          @relation(fields: [businessId], references: [id])
   serviceId        String
   service          Service           @relation(fields: [serviceId], references: [id])
+  preferredStaffId String?
+  preferredStaff   User?             @relation("PreferredDoctor", fields: [preferredStaffId], references: [id])
   status           TokenStatus       @default(waiting)
   joinedAt         DateTime          @default(now())
   calledAt         DateTime?
@@ -154,6 +168,8 @@ model StaffAssignment {
   business         Business          @relation(fields: [businessId], references: [id])
   assignedById     String
   assignedBy       User              @relation("AssignedBy", fields: [assignedById], references: [id])
+  roleType         StaffRoleType     @default(OPD_Doctor)
+  isEmergencyPaused Boolean          @default(false)
   isActive         Boolean           @default(true)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -180,4 +196,21 @@ model RefreshToken {
   isRevoked        Boolean           @default(false)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+}
+
+model StaffSchedule {
+  id               String            @id @default(uuid())
+  staffId          String
+  staff            User              @relation(fields: [staffId], references: [id])
+  businessId       String
+  business         Business          @relation(fields: [businessId], references: [id])
+  dayOfWeek        Int
+  startTime        String
+  endTime          String
+  slotDuration     Int               @default(30)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([staffId, businessId, dayOfWeek])
 }

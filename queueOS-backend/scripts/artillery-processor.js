@@ -1,8 +1,5 @@
 require('dotenv').config();
-const mongoose = require('mongoose');
-const User = require('../src/models/user.model');
-const Business = require('../src/models/business.model');
-const Service = require('../src/models/services.model');
+const prisma = require('../src/config/prisma');
 
 let isConnected = false;
 let user, business, service;
@@ -10,11 +7,12 @@ let dbPromise = null;
 
 async function connectAndFetchData() {
   if (!isConnected) {
-    await mongoose.connect(process.env.MONGO_URL || "mongodb://127.0.0.1:27017/queueOS");
     isConnected = true;
-    user = await User.findOne({ role: 'customer' });
-    business = await Business.findOne({});
-    service = await Service.findOne({ businessId: business._id });
+    user = await prisma.user.findFirst({ where: { role: 'customer' } });
+    service = await prisma.service.findFirst();
+    if (service) {
+        business = await prisma.business.findUnique({ where: { id: service.businessId } });
+    }
   }
 }
 
@@ -32,8 +30,8 @@ async function setupTestData(context, ee) {
 
     context.vars.email = user.email;
     context.vars.password = "password123"; // the seeded password
-    context.vars.businessId = business._id.toString();
-    context.vars.serviceId = service._id.toString();
+    context.vars.businessId = business.id.toString();
+    context.vars.serviceId = service.id.toString();
     
     return;
   } catch (error) {

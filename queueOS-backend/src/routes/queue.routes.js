@@ -104,4 +104,11 @@ router.put(
   require("../controllers/queue.controller").toggleQueuePause
 );
 
+router.put(
+  "/doctor/pause",
+  protect,
+  authorizeRoles("staff", "owner", "admin"),
+  require("../controllers/queue.controller").toggleDoctorPause
+);
+
 module.exports = router;

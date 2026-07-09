@@ -124,7 +124,7 @@ export default function QueueBoard() {
         {serviceFilter !== 'all' && (
           <button 
             onClick={() => setShowQR(true)}
-            className="ml-auto flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition"
+            className="ml-auto flex items-center gap-2 bg-primary-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-premium hover:bg-primary-800 transition"
           >
             <QrCode size={16} /> Generate Join QR
           </button>
@@ -138,7 +138,7 @@ export default function QueueBoard() {
               <X size={20} />
             </button>
             <div className="mb-6">
-              <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-primary-100 text-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <QrCode size={32} />
               </div>
               <h3 className="text-xl font-black text-slate-900">Department Queue</h3>
@@ -166,41 +166,41 @@ export default function QueueBoard() {
 
       <div className="space-y-3">
         {filtered.map(q => (
-          <div key={q._id} className={`card ${q.status === 'called' ? 'border-2 border-green-300 bg-green-50' : ''}`}>
+          <div key={q._id} className={`card ${q.status === 'called' ? 'border-2 border-secondary-300 bg-secondary-50' : ''}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${q.status === 'called' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${q.status === 'called' ? 'bg-secondary-500 text-white' : 'bg-primary-50 text-primary-700 border border-primary-100'}`}>
                   {q.tokenNumber}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Token #{q.tokenNumber}</p>
-                  <p className="text-xs text-gray-400 font-mono">{q._id}</p>
+                  <p className="font-semibold text-primary-900">Patient #{q.tokenNumber}</p>
+                  <p className="text-xs text-slate-500 font-mono">{q._id}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-xs px-2 py-1 rounded-full capitalize ${q.status === 'called' ? 'bg-green-100 text-green-700' : q.status === 'served' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                <span className={`text-xs px-2 py-1 rounded-full capitalize font-semibold ${q.status === 'called' ? 'bg-secondary-100 text-secondary-700' : q.status === 'served' ? 'bg-primary-100 text-primary-700' : 'bg-slate-100 text-slate-600'}`}>
                   {q.status.replace('_', ' ')}
                 </span>
                 
                 {q.status === 'waiting' && (
-                  <button onClick={() => handleAction('call', q._id)} className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-medium hover:bg-indigo-200 transition-colors">
+                  <button onClick={() => handleAction('call', q._id)} className="text-xs bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-bold hover:bg-primary-200 transition-colors">
                     Call
                   </button>
                 )}
 
                 {q.status === 'called' && (
                   <>
-                    <button onClick={() => handleAction('served', q._id)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded-full font-medium hover:bg-blue-700 transition-colors">
-                      Served
+                    <button onClick={() => handleAction('served', q._id)} className="text-xs bg-primary-600 text-white px-3 py-1 rounded-full font-bold hover:bg-primary-700 transition-colors">
+                      Completed
                     </button>
-                    <button onClick={() => handleAction('no-show', q._id)} className="text-xs bg-orange-500 text-white px-3 py-1 rounded-full font-medium hover:bg-orange-600 transition-colors">
+                    <button onClick={() => handleAction('no-show', q._id)} className="text-xs bg-rose-500 text-white px-3 py-1 rounded-full font-bold hover:bg-rose-600 transition-colors">
                       No Show
                     </button>
                   </>
                 )}
 
                 {q.status === 'no_show' && (
-                  <button onClick={() => handleAction('recall', q._id)} className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full font-medium hover:bg-orange-200 transition-colors">
+                  <button onClick={() => handleAction('recall', q._id)} className="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold hover:bg-amber-200 transition-colors">
                     Recall
                   </button>
                 )}
@@ -209,9 +209,9 @@ export default function QueueBoard() {
           </div>
         ))}
         {filtered.length === 0 && (
-          <div className="card text-center py-12">
-            <Users size={40} className="text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">Queue is empty</p>
+          <div className="card text-center py-12 border-dashed border-2 border-slate-200 shadow-none">
+            <Users size={40} className="text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500 font-medium">Queue is empty</p>
           </div>
         )}
       </div>

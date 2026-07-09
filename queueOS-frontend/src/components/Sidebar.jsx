@@ -98,16 +98,16 @@ export default function Sidebar({ open, onClose }) {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="absolute top-20 left-4 sm:left-6 z-50 w-72 rounded-[2rem] bg-white/90 backdrop-blur-3xl shadow-[0_20px_60px_-15px_rgba(79,70,229,0.3)] border border-white/60 overflow-hidden flex flex-col max-h-[calc(100vh-100px)]"
+            className="absolute top-20 left-4 sm:left-6 z-50 w-72 rounded-[2rem] bg-white/90 backdrop-blur-3xl shadow-[0_20px_60px_-15px_rgba(16,42,67,0.3)] border border-white/60 overflow-hidden flex flex-col max-h-[calc(100vh-100px)]"
           >
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200/50">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] bg-indigo-600 text-white shadow-md shadow-indigo-500/30">
+                <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] bg-primary-700 text-white shadow-md shadow-primary-500/30">
                   <span className="text-lg font-black">Q</span>
                 </div>
                 <div>
                   <p className="text-slate-900 text-sm font-bold">QueueOS</p>
-                  <p className="text-indigo-600 text-[10px] font-bold uppercase tracking-wider">{user.role} Portal</p>
+                  <p className="text-primary-700 text-[10px] font-bold uppercase tracking-wider">{user.role} Portal</p>
                 </div>
               </div>
               <button onClick={onClose} className="text-slate-400 hover:text-rose-500 transition-colors p-2 rounded-full hover:bg-rose-50">
@@ -124,12 +124,12 @@ export default function Sidebar({ open, onClose }) {
                     className={({ isActive }) =>
                       `group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
                         isActive
-                          ? 'bg-indigo-50 text-indigo-700 shadow-sm'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600 hover:translate-x-1'
+                          ? 'bg-primary-50 text-primary-800 shadow-sm'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-primary-700 hover:translate-x-1'
                       }`
                     }
                   >
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-400 group-hover:text-indigo-600 group-hover:shadow-sm transition-all border border-slate-100">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-400 group-hover:text-primary-700 group-hover:shadow-sm transition-all border border-slate-100">
                       <Icon size={16} />
                     </span>
                     <span>{label}</span>
@@ -140,7 +140,7 @@ export default function Sidebar({ open, onClose }) {
 
             <div className="border-t border-slate-200/50 p-4 bg-slate-50/50">
               <div className="flex items-center gap-3 rounded-2xl bg-white p-3 border border-slate-100 shadow-sm">
-                <div className="h-9 w-9 rounded-[1rem] bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm font-bold">
+                <div className="h-9 w-9 rounded-[1rem] bg-primary-100 flex items-center justify-center text-primary-800 text-sm font-bold">
                   {user.name?.charAt(0)}
                 </div>
                 <div className="min-w-0">

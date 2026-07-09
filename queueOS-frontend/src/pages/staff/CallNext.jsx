@@ -89,21 +89,20 @@ export default function CallNext() {
           </select>
         </div>
       )}
-
       {attendingQueue.length > 0 && (
         <div className="mb-8">
-          <h3 className="font-semibold text-green-700 mb-3 uppercase text-xs tracking-wider">Currently Attending</h3>
+          <h3 className="font-semibold text-secondary-700 mb-3 uppercase text-xs tracking-wider">Currently Attending</h3>
           <div className="space-y-3">
             {attendingQueue.map(q => (
-              <div key={q._id} className="card py-4 px-4 border-2 border-green-200 bg-green-50 shadow-sm">
+              <div key={q._id} className="card py-4 px-4 border-2 border-secondary-200 bg-secondary-50 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold bg-green-500 text-white text-lg">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold bg-secondary-500 text-white text-lg">
                       {q.tokenNumber}
                     </div>
                     <div>
-                      <p className="font-bold text-gray-900 text-lg">Token #{q.tokenNumber}</p>
-                      <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                      <p className="font-bold text-primary-900 text-lg">Patient #{q.tokenNumber}</p>
+                      <p className="text-xs text-secondary-600 font-medium flex items-center gap-1">
                         <PhoneCall size={12} /> Attending
                       </p>
                     </div>
@@ -113,14 +112,14 @@ export default function CallNext() {
                   <button 
                     onClick={() => handleAction('served', q._id)}
                     disabled={loadingAction === q._id}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm"
+                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm"
                   >
-                    <CheckCircle size={16} /> Served
+                    <CheckCircle size={16} /> Completed
                   </button>
                   <button 
                     onClick={() => handleAction('no-show', q._id)}
                     disabled={loadingAction === q._id}
-                    className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-xl py-2 text-sm flex items-center justify-center gap-1 transition-colors"
+                    className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold rounded-xl py-2 text-sm flex items-center justify-center gap-1 transition-colors border border-rose-200"
                   >
                     <XCircle size={16} /> No Show
                   </button>
@@ -132,17 +131,17 @@ export default function CallNext() {
       )}
 
       <div>
-        <h3 className="font-semibold text-gray-900 mb-3 uppercase text-xs tracking-wider">Up Next ({waitingQueue.length})</h3>
+        <h3 className="font-semibold text-primary-900 mb-3 uppercase text-xs tracking-wider">Up Next ({waitingQueue.length})</h3>
         <div className="space-y-3">
           {waitingQueue.map((q, idx) => (
-            <div key={q._id} className="card py-3 px-4 flex items-center justify-between shadow-sm border border-gray-100">
+            <div key={q._id} className="card py-3 px-4 flex items-center justify-between shadow-sm border border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold bg-gray-100 text-gray-700">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold bg-primary-50 text-primary-700 border border-primary-100">
                   {q.tokenNumber}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Token #{q.tokenNumber}</p>
-                  <p className="text-xs text-gray-400">Position: {idx + 1}</p>
+                  <p className="font-semibold text-primary-900">Patient #{q.tokenNumber}</p>
+                  <p className="text-xs text-slate-500">Position: {idx + 1}</p>
                 </div>
               </div>
               <button 
