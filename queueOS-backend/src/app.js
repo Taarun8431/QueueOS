@@ -28,14 +28,28 @@ const analyticsRoutes = require("./routes/analytics.routes");
 const staffRoutes = require("./routes/staff.routes");
 
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL,
-    "http://localhost:5173",
-    "https://queue-os.vercel.app"
-  ].filter(Boolean),
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      "http://localhost:5173",
+      "http://localhost:5000",
+      "https://queue-os.vercel.app"
+    ].filter(Boolean);
+
+    // Allow if origin is exactly in the allowed list, or if it ends with .vercel.app
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    
+    // Otherwise, deny gracefully without crashing
+    return callback(null, false);
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
 }));
 
 // Set security HTTP headers
