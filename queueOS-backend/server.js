@@ -5,7 +5,6 @@ const app = require("./src/app");
 const prisma = require("./src/config/prisma");
 const { connect: connectRedis, pubClient, subClient } = require("./src/config/redis");
 const { Server } = require("socket.io");
-const { createAdapter } = require("@socket.io/redis-adapter");
 require("./src/workers/notification.worker");
 require("./src/workers/archive.worker");
 
@@ -57,8 +56,6 @@ async function startServer() {
     
     await connectRedis();
     logger.info("✔ Connected to Redis");
-
-    io.adapter(createAdapter(pubClient, subClient));
 
     server.listen(PORT, () => {
       logger.info(`🚀 SERVER running on port ${PORT}`);
