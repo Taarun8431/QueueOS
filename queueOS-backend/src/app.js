@@ -9,6 +9,12 @@ const hpp = require("hpp");
 
 const app = express();
 
+// Trust the proxy (Render load balancer) so rate limiting uses the correct client IPs
+app.set("trust proxy", 1);
+
+// Dedicated health check endpoint (must be placed BEFORE rate limiters)
+app.get("/health", (req, res) => res.status(200).send("OK"));
+
 const authRoutes = require("./routes/auth.routes");
 const businessRoutes = require("./routes/business.routes");
 const serviceRoutes = require("./routes/service.routes");
