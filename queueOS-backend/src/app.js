@@ -15,6 +15,9 @@ app.set("trust proxy", 1);
 // Dedicated health check endpoint (must be placed BEFORE rate limiters)
 app.get("/health", (req, res) => res.status(200).send("OK"));
 
+// Root endpoint for default Render health checks
+app.get("/", (req, res) => res.status(200).send("API is running"));
+
 const authRoutes = require("./routes/auth.routes");
 const businessRoutes = require("./routes/business.routes");
 const serviceRoutes = require("./routes/service.routes");
