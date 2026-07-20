@@ -3,7 +3,7 @@ services:
     name: queueos-backend
     env: node
     rootDir: queueOS-backend
-    buildCommand: npm install && npx prisma db push
+    buildCommand: npm install && npx prisma generate
     startCommand: npm start
     envVars:
       - key: DATABASE_URL
