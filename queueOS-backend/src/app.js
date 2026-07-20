@@ -4,7 +4,7 @@ const cookieParser = require("cookie-parser");
 const { authLimiter, generalLimiter } = require("./middlewares/rateLimiter.middleware");
 const { errorHandler, notFoundHandler } = require("./middlewares/error.middleware");
 const helmet = require("helmet");
-const xss = require("xss-clean");
+const xss = require("xss");
 const hpp = require("hpp");
 
 const app = express();
@@ -30,8 +30,24 @@ app.use(helmet());
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 
-// Data sanitization against XSS
-app.use(xss());
+// Data sanitization against XSS — xss-clean is incompatible with Express v5
+// (it tries to write to req.query which is a read-only getter in Express v5).
+// Instead, sanitize req.body only, which is safe to mutate.
+const sanitizeObject = (obj) => {
+  if (!obj || typeof obj !== "object") return obj;
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === "string") {
+      obj[key] = xss(obj[key]);
+    } else if (typeof obj[key] === "object") {
+      sanitizeObject(obj[key]);
+    }
+  }
+  return obj;
+};
+app.use((req, _res, next) => {
+  if (req.body) sanitizeObject(req.body);
+  next();
+});
 
 // Prevent HTTP Parameter Pollution
 app.use(hpp());
