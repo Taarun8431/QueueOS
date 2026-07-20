@@ -34,8 +34,6 @@ const io = new Server(server, {
   },
 });
 
-io.adapter(createAdapter(pubClient, subClient));
-
 app.set("io", io);
 
 io.on("connection", (socket) => {
@@ -59,6 +57,8 @@ async function startServer() {
     
     await connectRedis();
     logger.info("✔ Connected to Redis");
+
+    io.adapter(createAdapter(pubClient, subClient));
 
     server.listen(PORT, () => {
       logger.info(`🚀 SERVER running on port ${PORT}`);
