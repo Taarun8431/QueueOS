@@ -28,7 +28,7 @@ export default function MyBusinesses() {
   const handleDelete = async (id) => {
     try {
       await api.delete(`/business/${id}`)
-      setBusinesses(prev => prev.filter(b => b._id !== id))
+      setBusinesses(prev => prev.filter(b => b.id !== id))
       setDeleteId(null)
       toast.success('Business deleted successfully')
     } catch (err) {
@@ -77,7 +77,7 @@ export default function MyBusinesses() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filtered.map(b => (
-            <div key={b._id} className="card hover:shadow-md transition-shadow">
+            <div key={b.id} className="card hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-2xl">
@@ -103,20 +103,20 @@ export default function MyBusinesses() {
                   <span>{b.phone}</span>
                 </div>
                 <div className="text-xs text-gray-400">
-                  🕐 {b.workingHours.open} – {b.workingHours.close}
+                  🕐 {b.workingHoursOpen || 'N/A'} – {b.workingHoursClose || 'N/A'}
                 </div>
               </div>
 
               <div className="flex gap-2 pt-3 border-t border-gray-100">
-                <button onClick={() => navigate(`/owner/businesses/${b._id}`)}
+                <button onClick={() => navigate(`/owner/businesses/${b.id}`)}
                   className="btn-secondary flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5">
                   <Eye size={13} /> View
                 </button>
-                <button onClick={() => navigate(`/owner/businesses/${b._id}/edit`)}
+                <button onClick={() => navigate(`/owner/businesses/${b.id}/edit`)}
                   className="btn-secondary flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5">
                   <Edit2 size={13} /> Edit
                 </button>
-                <button onClick={() => setDeleteId(b._id)}
+                <button onClick={() => setDeleteId(b.id)}
                   className="btn-danger flex items-center justify-center gap-1.5 px-3 text-xs py-1.5">
                   <Trash2 size={13} />
                 </button>

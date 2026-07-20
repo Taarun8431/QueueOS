@@ -17,7 +17,7 @@ export default function Analytics() {
     api.get('/business/my')
       .then(res => {
         setBusinesses(res.data.data)
-        if (res.data.data.length > 0) setSelectedBusiness(res.data.data[0]._id)
+        if (res.data.data.length > 0) setSelectedBusiness(res.data.data[0].id)
       })
       .catch(() => toast.error('Failed to load businesses'))
   }, [])
@@ -54,7 +54,7 @@ export default function Analytics() {
 
       {businesses.length > 1 && (
         <select className="input-field mb-6 max-w-xs" value={selectedBusiness} onChange={e => setSelectedBusiness(e.target.value)}>
-          {businesses.map(b => <option key={b._id} value={b._id}>{b.businessName}</option>)}
+          {businesses.map(b => <option key={b.id} value={b.id}>{b.businessName}</option>)}
         </select>
       )}
 
@@ -69,11 +69,11 @@ export default function Analytics() {
               <h3 className="font-semibold text-gray-900 mb-6">Peak Hours</h3>
               <div className="flex items-end gap-3 h-40">
                 {peakHours.slice(0, 12).map(d => (
-                  <div key={d._id} className="flex-1 flex flex-col items-center gap-1">
+                  <div key={d.id} className="flex-1 flex flex-col items-center gap-1">
                     <span className="text-xs text-gray-500 font-medium">{d.totalTokens}</span>
                     <div className="w-full bg-primary-500 rounded-t-lg hover:bg-primary-600"
                       style={{ height: `${(d.totalTokens / maxTokens) * 100}%` }} />
-                    <span className="text-xs text-gray-400">{d._id}h</span>
+                    <span className="text-xs text-gray-400">{d.id}h</span>
                   </div>
                 ))}
               </div>
@@ -85,7 +85,7 @@ export default function Analytics() {
               <h3 className="font-semibold text-gray-900 mb-4">Services Breakdown</h3>
               <div className="space-y-3">
                 {serviceStats.map(s => (
-                  <div key={s._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl text-sm">
+                  <div key={s.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl text-sm">
                     <p className="font-medium text-gray-900">{s.serviceName}</p>
                     <div className="flex gap-4 text-xs text-gray-500">
                       <span>Total: {s.totalTokens}</span>

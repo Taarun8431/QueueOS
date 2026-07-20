@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Users, Plus, Building2, UserMinus, Copy, Check, Stethoscope, Clock, ShieldCheck } from 'lucide-react'
+import { Users, Plus, Building2, UserMinus, Copy, Check, Stethoscope, Clock, ShieldCheck, X } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageHeader from '../../components/PageHeader'
@@ -20,7 +20,7 @@ export default function ManageStaff() {
     api.get('/business/my').then(res => {
       const bizs = res.data.data
       setBusinesses(bizs)
-      if (bizs.length > 0) setSelectedBusiness(bizs[0]._id)
+      if (bizs.length > 0) setSelectedBusiness(bizs[0].id)
     }).catch(() => toast.error('Failed to load hospitals'))
   }, [])
 
@@ -112,14 +112,14 @@ export default function ManageStaff() {
           className="input-field max-w-md font-medium"
         >
           {businesses.map(b => (
-            <option key={b._id} value={b._id}>{b.businessName}</option>
+            <option key={b.id} value={b.id}>{b.businessName}</option>
           ))}
         </select>
       </div>
 
       <div className="space-y-3">
         {staffList.map(assignment => (
-          <div key={assignment._id} className="card flex items-center justify-between hover:border-primary-300 transition-colors group">
+          <div key={assignment.id} className="card flex items-center justify-between hover:border-primary-300 transition-colors group">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-primary-50 border border-primary-100 rounded-2xl flex items-center justify-center text-primary-700 group-hover:bg-primary-100 transition-colors">
                 <Stethoscope size={24} />
@@ -132,7 +132,7 @@ export default function ManageStaff() {
               </div>
             </div>
             <button
-              onClick={() => handleRemoveStaff(assignment.staffId._id)}
+              onClick={() => handleRemoveStaff(assignment.staffId.id)}
               className="p-3 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-all"
               title="Remove Staff"
             >

@@ -15,17 +15,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      const allowedOrigins = [
-        process.env.FRONTEND_URL,
-        "http://localhost:5173",
-        "http://localhost:5000",
-        "https://queue-os.vercel.app"
-      ].filter(Boolean);
-      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-        return callback(null, true);
-      }
-      return callback(null, false);
+      // Allow absolutely any origin to prevent CORS errors during testing and deployment
+      callback(null, true);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

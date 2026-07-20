@@ -29,23 +29,8 @@ const staffRoutes = require("./routes/staff.routes");
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      process.env.FRONTEND_URL,
-      "http://localhost:5173",
-      "http://localhost:5000",
-      "https://queue-os.vercel.app"
-    ].filter(Boolean);
-
-    // Allow if origin is exactly in the allowed list, or if it ends with .vercel.app
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    }
-    
-    // Otherwise, deny gracefully without crashing
-    return callback(null, false);
+    // Allow absolutely any origin to prevent CORS errors during testing and deployment
+    callback(null, true);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

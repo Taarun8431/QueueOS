@@ -27,7 +27,7 @@ export default function MyAppointments() {
   const cancelAppointment = async (id) => {
     try {
       await api.put(`/appointments/${id}/cancel`)
-      setAppointments(prev => prev.map(a => a._id === id ? { ...a, status: 'cancelled' } : a))
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a))
       toast.success('Appointment cancelled')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Cancel failed')
@@ -37,7 +37,7 @@ export default function MyAppointments() {
   const checkInAppointment = async (id) => {
     try {
       await api.post(`/appointments/${id}/check-in`)
-      setAppointments(prev => prev.map(a => a._id === id ? { ...a, status: 'checked_in' } : a))
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'checked_in' } : a))
       toast.success('Checked in successfully! You are now in the live queue.')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Check-in failed')
@@ -63,7 +63,7 @@ export default function MyAppointments() {
         {filtered.map(a => {
           const cfg = STATUS_CONFIG[a.status] || STATUS_CONFIG.scheduled
           return (
-            <div key={a._id} className="card">
+            <div key={a.id} className="card">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <p className="font-semibold text-gray-900">{a.businessId?.businessName}</p>
@@ -77,11 +77,11 @@ export default function MyAppointments() {
               </div>
               {a.status === 'scheduled' && (
                 <div className="flex gap-2 pt-2 border-t border-gray-100">
-                  <button onClick={() => checkInAppointment(a._id)}
+                  <button onClick={() => checkInAppointment(a.id)}
                     className="btn-primary text-xs py-1.5 flex items-center gap-1">
                     <CheckCircle size={12} /> Check In (Arrived)
                   </button>
-                  <button onClick={() => cancelAppointment(a._id)}
+                  <button onClick={() => cancelAppointment(a.id)}
                     className="btn-danger text-xs py-1.5 flex items-center gap-1">
                     <X size={12} /> Cancel
                   </button>
