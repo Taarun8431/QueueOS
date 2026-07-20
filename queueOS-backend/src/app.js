@@ -19,7 +19,11 @@ const analyticsRoutes = require("./routes/analytics.routes");
 const staffRoutes = require("./routes/staff.routes");
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: [
+    process.env.FRONTEND_URL,
+    "http://localhost:5173",
+    "https://queue-os.vercel.app"
+  ].filter(Boolean),
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
