@@ -20,5 +20,5 @@ COPY . .
 # Expose the port the app runs on
 EXPOSE 5000
 
-# Define the command to run your app
-CMD ["node", "server.js"]
+# Define the command to run your app (push schema to DB before starting)
+CMD ["sh", "-c", "npx prisma db push && node server.js"]

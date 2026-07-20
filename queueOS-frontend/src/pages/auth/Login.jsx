@@ -87,6 +87,7 @@ export default function Login() {
             <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="email"
+              autoComplete="username"
               placeholder="you@example.com"
               className={`input-field pl-12 bg-white ${errors.email ? 'border-rose-400 focus:ring-rose-400' : ''}`}
               {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+$/i, message: 'Invalid email' } })}
@@ -101,6 +102,7 @@ export default function Login() {
             <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type={showPass ? 'text' : 'password'}
+              autoComplete="current-password"
               placeholder="••••••••"
               className={`input-field pl-12 pr-12 bg-white ${errors.password ? 'border-rose-400 focus:ring-rose-400' : ''}`}
               {...register('password', { required: 'Password is required', minLength: { value: 4, message: 'Min 4 characters' } })}

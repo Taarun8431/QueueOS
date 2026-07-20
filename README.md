@@ -12,7 +12,7 @@
 
 
 
-## 📖 Overview
+## Overview
 
 **QueueWISE** is a modern, full-stack queue management and appointment scheduling platform designed to streamline customer flow for various businesses (Hospitals, Salons, Government Offices, Service Centers, etc.). 
 
@@ -20,7 +20,7 @@ By combining real-time WebSockets, background BullMQ processing, and an intellig
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 - **Real-Time Queue Management**: Live token status updates powered by `Socket.io` and Redis.
 - **AI Wait-Time Predictions**: Python-based FastAPI Machine Learning service for dynamic wait-time estimation.
@@ -31,7 +31,7 @@ By combining real-time WebSockets, background BullMQ processing, and an intellig
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 QueueWISE embraces a robust microservice-inspired architecture separated into three distinct domains:
 
@@ -55,7 +55,7 @@ QueueWISE embraces a robust microservice-inspired architecture separated into th
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 QueueWISE/
@@ -79,7 +79,7 @@ QueueWISE/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js (v20+)
@@ -143,7 +143,7 @@ The frontend will be available at `http://localhost:5173`.
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 For a deeper dive into the technical details of the platform, please refer to the following documentation files:
 
@@ -152,6 +152,6 @@ For a deeper dive into the technical details of the platform, please refer to th
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

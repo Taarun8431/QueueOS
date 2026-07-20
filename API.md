@@ -1,10 +1,10 @@
-# 📡 API Documentation
+# API Documentation
 
 This document outlines the core REST API endpoints available in the QueueWISE backend (`queueOS-backend`). All endpoints are prefixed with `/api`.
 
 ---
 
-## 🔒 Authentication
+## Authentication
 
 QueueWISE uses a dual-token authentication mechanism:
 1. **Access Token**: A short-lived JWT passed in the `Authorization` header.
@@ -28,7 +28,7 @@ All API responses follow a uniform JSON structure:
 
 ---
 
-## 🧑‍🤝‍🧑 Auth Endpoints (`/api/auth`)
+## Auth Endpoints (`/api/auth`)
 
 ### 1. Register User
 `POST /api/auth/register`
@@ -39,7 +39,7 @@ All API responses follow a uniform JSON structure:
     "email": "john@example.com",
     "password": "securepassword",
     "phone": "1234567890",
-    "role": "customer" // Enum: customer, owner, staff
+    "role": "customer" 
   }
   ```
 - **Success Response (201)**: Returns user data.
@@ -62,8 +62,8 @@ All API responses follow a uniform JSON structure:
 
 ---
 
-## 🏢 Business Endpoints (`/api/business`)
-*(Requires Authentication)*
+## Business Endpoints (`/api/business`)
+
 
 ### 1. Create Business
 `POST /api/business`
@@ -82,7 +82,7 @@ All API responses follow a uniform JSON structure:
 
 ---
 
-## 🎟️ Queue & Token Endpoints (`/api/queue`)
+## Queue & Token Endpoints (`/api/queue`)
 *(Requires Authentication)*
 
 ### 1. Generate Token (Join Queue)
@@ -116,7 +116,7 @@ All API responses follow a uniform JSON structure:
 
 ---
 
-## 🤖 Machine Learning Integration (`/api/queue/predict-wait-time`)
+## Machine Learning Integration (`/api/queue/predict-wait-time`)
 *(Internal routing to ML Service)*
 
 `POST /api/queue/predict-wait-time`

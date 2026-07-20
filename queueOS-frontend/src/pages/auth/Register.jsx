@@ -89,6 +89,7 @@ export default function Register() {
             <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="email"
+              autoComplete="username"
               placeholder="you@example.com"
               className={`input-field pl-12 ${errors.email ? 'border-red-400' : ''}`}
               {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+$/i, message: 'Invalid email' } })}
@@ -118,6 +119,7 @@ export default function Register() {
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type={showPass ? 'text' : 'password'}
+                autoComplete="new-password"
                 placeholder="••••••••"
                 className={`input-field pl-12 pr-14 ${errors.password ? 'border-red-400' : ''}`}
                 {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })}
@@ -136,6 +138,7 @@ export default function Register() {
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 className={`input-field pl-12 ${errors.confirmPassword ? 'border-red-400' : ''}`}
                 {...register('confirmPassword', {
