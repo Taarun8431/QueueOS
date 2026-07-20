@@ -12,7 +12,7 @@ const createService = async (req, res) => {
 
         if (!serviceName || !businessId || estimatedDuration === undefined || price === undefined) {
             return res.status(400).json({
-                success: "false",
+                success: false,
                 message: "Required fields missing"
             });
         }

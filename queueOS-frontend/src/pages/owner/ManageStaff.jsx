@@ -21,7 +21,7 @@ export default function ManageStaff() {
       const bizs = res.data.data
       setBusinesses(bizs)
       if (bizs.length > 0) setSelectedBusiness(bizs[0]._id)
-    }).catch(() => toast.error('Failed to load departments'))
+    }).catch(() => toast.error('Failed to load hospitals'))
   }, [])
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function ManageStaff() {
   }
 
   const handleRemoveStaff = async (staffId) => {
-    if (!window.confirm("Are you sure you want to remove this staff member from this department?")) return
+    if (!window.confirm("Are you sure you want to remove this staff member from this hospital?")) return
     try {
       await api.delete(`/staff/unassign/${staffId}`)
       toast.success("Staff removed successfully")
@@ -105,7 +105,7 @@ export default function ManageStaff() {
       </div>
 
       <div className="card mb-6 shadow-sm">
-        <label className="block text-sm font-bold text-primary-900 mb-2">Select Department</label>
+        <label className="block text-sm font-bold text-primary-900 mb-2">Select Hospital</label>
         <select
           value={selectedBusiness}
           onChange={(e) => setSelectedBusiness(e.target.value)}
@@ -144,7 +144,7 @@ export default function ManageStaff() {
         {staffList.length === 0 && (
           <div className="text-center py-16 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
             <Users size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500 font-medium">No doctors assigned to this department yet.</p>
+            <p className="text-slate-500 font-medium">No doctors assigned to this hospital yet.</p>
           </div>
         )}
       </div>

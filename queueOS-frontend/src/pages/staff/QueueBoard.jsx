@@ -105,7 +105,7 @@ export default function QueueBoard() {
             value={serviceFilter} 
             onChange={e => setServiceFilter(e.target.value)}
           >
-            <option value="all">All Departments</option>
+            <option value="all">All Hospitals</option>
             {services.map(s => (
               <option key={s._id} value={s._id}>{s.serviceName}</option>
             ))}
@@ -141,7 +141,7 @@ export default function QueueBoard() {
               <div className="w-16 h-16 bg-primary-100 text-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <QrCode size={32} />
               </div>
-              <h3 className="text-xl font-black text-slate-900">Department Queue</h3>
+              <h3 className="text-xl font-black text-slate-900">Hospital Queue</h3>
               <p className="text-sm text-slate-500 mt-1">
                 {services.find(s => s._id === serviceFilter)?.serviceName}
               </p>
@@ -158,7 +158,7 @@ export default function QueueBoard() {
             </div>
             
             <p className="text-xs text-slate-400 font-medium px-4">
-              Ask the patient to scan this code with their phone camera to instantly join this specific department.
+              Ask the patient to scan this code with their phone camera to instantly join this specific hospital.
             </p>
           </div>
         </div>

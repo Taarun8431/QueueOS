@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Building2, CalendarCheck, ChevronRight, User, Stethoscope, Clock, FileText } from 'lucide-react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageHeader from '../../components/PageHeader'
@@ -26,10 +27,41 @@ export default function BookAppointment() {
   
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   useEffect(() => {
-    api.get('/business').then(res => setBusinesses(res.data.data)).catch(() => toast.error('Failed to load departments'))
-  }, [])
+    const init = async () => {
+      try {
+        const res = await api.get('/business')
+        const allBusinesses = res.data.data
+        setBusinesses(allBusinesses)
+        
+        const qBusinessId = searchParams.get('businessId')
+        const qServiceId = searchParams.get('serviceId')
+        
+        if (qBusinessId && qServiceId) {
+          const b = allBusinesses.find(bus => bus.id === qBusinessId || bus._id === qBusinessId)
+          if (b) {
+            setSelectedBusiness(b)
+            const sRes = await api.get(`/services/business/${qBusinessId}`)
+            const s = sRes.data.data.find(srv => srv.id === qServiceId || srv._id === qServiceId)
+            if (s) {
+              setSelectedService(s)
+              setLoading(true)
+              const dRes = await api.get(`/staff/role?businessId=${qBusinessId}&roleType=Appointment_Doctor`)
+              setDoctors(dRes.data.data)
+              setStep(3)
+              setLoading(false)
+            }
+          }
+        }
+      } catch {
+        toast.error('Failed to load data')
+      }
+    }
+    init()
+  }, [searchParams])
 
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
@@ -112,7 +144,7 @@ export default function BookAppointment() {
       <AnimatePresence mode="wait">
         {step === 1 && (
           <motion.div key="s1" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-4">
-            <h3 className="text-lg font-bold text-primary-900 mb-2">Select a Clinic</h3>
+            <h3 className="text-lg font-bold text-primary-900 mb-2">Select a Hospital</h3>
             {businesses.filter(b => b.isActive).map(b => (
               <button key={b.id || b._id} onClick={() => selectBusiness(b)}
                 className="card w-full flex items-center justify-between hover:border-primary-400 cursor-pointer text-left group">

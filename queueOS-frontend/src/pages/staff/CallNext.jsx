@@ -76,13 +76,13 @@ export default function CallNext() {
 
       {services.length > 0 && (
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Select Department</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Select Hospital</label>
           <select 
             className="input-field w-full bg-white shadow-sm" 
             value={selectedService} 
             onChange={e => setSelectedService(e.target.value)}
           >
-            <option value="all">All Departments</option>
+            <option value="all">All Hospitals</option>
             {services.map(s => (
               <option key={s._id} value={s._id}>{s.serviceName}</option>
             ))}

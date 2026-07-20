@@ -12,7 +12,7 @@ const createBusiness = async (req, res) => {
             workingHours,
         } = req.body;
 
-        if (!businessName || !businessEmail || !description || !category || !address || !workingHours) {
+        if (!businessName || !businessEmail || !category || !address || !workingHours) {
             return res.status(400).json({
                 success: false,
                 message: "Required field missing"

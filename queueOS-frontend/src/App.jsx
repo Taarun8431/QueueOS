@@ -18,6 +18,8 @@ import BookAppointment from './pages/customer/BookAppointment'
 import MyAppointments from './pages/customer/MyAppointments'
 import CustomerNotifications from './pages/customer/Notifications'
 
+import HospitalSearch from './pages/customer/HospitalSearch'
+
 // Owner Pages
 import OwnerDashboard from './pages/owner/Dashboard'
 import MyBusinesses from './pages/owner/MyBusinesses'
@@ -73,6 +75,7 @@ export default function App() {
           {/* Customer */}
           <Route element={<RoleRoute role="customer" />}>
             <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+            <Route path="/customer/hospitals" element={<HospitalSearch />} />
             <Route path="/customer/join-queue" element={<JoinQueue />} />
             <Route path="/customer/queue-status" element={<QueueStatus />} />
             <Route path="/customer/book-appointment" element={<BookAppointment />} />

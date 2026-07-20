@@ -22,8 +22,8 @@ try
 }catch(error)
 {
     return res.status(401).json({
-        success:"false",
-        message:"Invalid Token",
+        success: false,
+        message: "Invalid Token",
     });
 }
 

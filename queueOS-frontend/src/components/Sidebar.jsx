@@ -11,18 +11,17 @@ import {
 const NAV = {
   customer: [
     { to: '/customer/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/customer/join-queue', icon: Clock, label: 'Join Queue' },
+    { to: '/customer/hospitals', icon: Building2, label: 'Find Hospital' },
     { to: '/customer/queue-status', icon: Activity, label: 'Queue Status' },
-    { to: '/customer/book-appointment', icon: CalendarCheck, label: 'Book Appointment' },
     { to: '/customer/appointments', icon: ClipboardList, label: 'My Appointments' },
     { to: '/customer/notifications', icon: Bell, label: 'Notifications' },
   ],
   owner: [
     { to: '/owner/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/owner/businesses', icon: Building2, label: 'My Businesses' },
-    { to: '/owner/businesses/create', icon: PlusCircle, label: 'Create Business' },
-    { to: '/owner/services', icon: Briefcase, label: 'Services' },
-    { to: '/owner/staff', icon: Users, label: 'Manage Staff' },
+    { to: '/owner/businesses', icon: Building2, label: 'My Hospitals' },
+    { to: '/owner/businesses/create', icon: PlusCircle, label: 'Register Hospital' },
+    { to: '/owner/services', icon: Briefcase, label: 'Treatments / Services' },
+    { to: '/owner/staff', icon: Users, label: 'Manage Doctors' },
     { to: '/owner/analytics', icon: BarChart3, label: 'Analytics' },
     { to: '/owner/ai-predictions', icon: BrainCircuit, label: 'AI Predictions' },
   ],
@@ -35,7 +34,7 @@ const NAV = {
   ],
   admin: [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/admin/businesses', icon: Building2, label: 'Manage Businesses' },
+    { to: '/admin/businesses', icon: Building2, label: 'Manage Hospitals' },
     { to: '/admin/users', icon: Users, label: 'Manage Users' },
     { to: '/admin/analytics', icon: BarChart3, label: 'Platform Analytics' },
   ],

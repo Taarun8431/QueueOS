@@ -5,8 +5,8 @@ import { Building2, Mail, Phone, MapPin, Clock, FileText, Tag, ArrowLeft } from 
 import PageHeader from '../../components/PageHeader'
 import api from '../../api'
 
-const CATEGORIES = ['hospital', 'salon', 'bank', 'government_office', 'service_center']
-const CATEGORY_LABELS = { hospital: 'Hospital', salon: 'Salon', bank: 'Bank', government_office: 'Government Office', service_center: 'Service Center' }
+const CATEGORIES = ['hospital']
+const CATEGORY_LABELS = { hospital: 'Hospital' }
 
 export default function CreateBusiness() {
   const navigate = useNavigate()
@@ -35,8 +35,8 @@ export default function CreateBusiness() {
   return (
     <div className="max-w-2xl">
       <PageHeader
-        title="Create Business"
-        subtitle="Fill in the details to register a new business"
+        title="Register Hospital"
+        subtitle="Fill in the details to register a new hospital"
         action={
           <button onClick={() => navigate('/owner/businesses')}
             className="btn-secondary flex items-center gap-2 text-sm">
@@ -47,12 +47,12 @@ export default function CreateBusiness() {
       <div className="card">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Business Name *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Hospital Name *</label>
             <div className="relative">
               <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input type="text" placeholder="e.g. City Medical Center"
                 className={`input-field pl-9 ${errors.name ? 'border-red-400' : ''}`}
-                {...register('name', { required: 'Business name is required', minLength: { value: 3, message: 'Min 3 characters' } })} />
+                {...register('name', { required: 'Hospital name is required', minLength: { value: 3, message: 'Min 3 characters' } })} />
             </div>
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
           </div>
@@ -70,10 +70,10 @@ export default function CreateBusiness() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Business Email *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hospital Email *</label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="email" placeholder="contact@business.com"
+                <input type="email" placeholder="contact@hospital.com"
                   className={`input-field pl-9 ${errors.email ? 'border-red-400' : ''}`}
                   {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+$/i, message: 'Invalid email' } })} />
               </div>
@@ -104,7 +104,7 @@ export default function CreateBusiness() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <div className="relative">
               <FileText size={16} className="absolute left-3 top-3 text-gray-400" />
-              <textarea rows={3} placeholder="Describe your business..." className="input-field pl-9 resize-none" {...register('description')} />
+              <textarea rows={3} placeholder="Describe your hospital..." className="input-field pl-9 resize-none" {...register('description')} />
             </div>
           </div>
           <div>
@@ -123,7 +123,7 @@ export default function CreateBusiness() {
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => navigate('/owner/businesses')} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-              {isSubmitting ? 'Creating...' : 'Create Business'}
+              {isSubmitting ? 'Registering...' : 'Register Hospital'}
             </button>
           </div>
         </form>
