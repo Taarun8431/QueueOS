@@ -17,9 +17,9 @@ export default function CustomerDashboard() {
   }, [])
 
   const quickLinks = [
-    { label: 'Join Queue', desc: 'Walk in and get a token', icon: Clock, path: '/customer/join-queue', bg: 'bg-blue-50', text: 'text-blue-600' },
-    { label: 'Book Appointment', desc: 'Reserve your spot ahead', icon: CalendarCheck, path: '/customer/book-appointment', bg: 'bg-green-50', text: 'text-green-600' },
+    { label: 'Search Hospitals', desc: 'Find hospitals and book or join queue', icon: Clock, path: '/customer/hospitals', bg: 'bg-blue-50', text: 'text-blue-600' },
     { label: 'Queue Status', desc: 'Track your position live', icon: Activity, path: '/customer/queue-status', bg: 'bg-purple-50', text: 'text-purple-600' },
+    { label: 'My Appointments', desc: 'View your bookings', icon: CalendarCheck, path: '/customer/appointments', bg: 'bg-green-50', text: 'text-green-600' },
     { label: 'Notifications', desc: 'Stay updated in real time', icon: Bell, path: '/customer/notifications', bg: 'bg-orange-50', text: 'text-orange-600' },
   ]
 

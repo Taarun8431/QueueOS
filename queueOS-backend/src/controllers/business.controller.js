@@ -76,6 +76,11 @@ const getAllBusinesses = async (req, res) => {
         const businesses = await prisma.business.findMany({
             where: {
                 isActive: true
+            },
+            include: {
+                services: {
+                    where: { isActive: true, isDeleted: false }
+                }
             }
         });
         return res.status(200).json({
