@@ -2,6 +2,13 @@
 
 This document outlines the core REST API endpoints available in the QueueWISE backend (`queueOS-backend`). All endpoints are prefixed with `/api`.
 
+## Table of Contents
+- [Authentication](#authentication)
+- [Auth Endpoints](#auth-endpoints-apiauth)
+- [Business Endpoints](#business-endpoints-apibusiness)
+- [Queue & Token Endpoints](#queue--token-endpoints-apiqueue)
+- [Machine Learning Integration](#machine-learning-integration-apiqueuepredict-wait-time)
+
 ---
 
 ## Authentication

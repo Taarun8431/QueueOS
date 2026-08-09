@@ -1,10 +1,10 @@
-
-  
- 🕒 QueueWISE Platform
+# 🕒 QueueWISE Platform
 
 **Intelligent Queue Management & ML-Powered Wait-Time Predictions**
 
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 ![React](https://img.shields.io/badge/React-18-blue)
 ![Node](https://img.shields.io/badge/Node-20-green)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-teal)
@@ -84,8 +84,22 @@ QueueWISE/
 ### Prerequisites
 - Node.js (v20+)
 - Python (v3.10+)
+- Docker and Docker Compose (Recommended)
 - PostgreSQL Database Server
 - Redis Server (or Cloud Redis URI)
+
+### Quick Start (Docker Compose)
+The easiest way to run the entire stack (PostgreSQL, Redis, ML Service, and Node API) is via Docker Compose:
+
+```bash
+docker-compose up --build -d
+```
+The backend API will run on `http://localhost:5000` and the ML API on `http://localhost:8000`. 
+Note: You still need to run the Frontend React app manually (Step 4 below).
+
+---
+
+### Manual Setup
 
 ### 1. Database Setup (Backend)
 
