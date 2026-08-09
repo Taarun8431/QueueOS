@@ -119,10 +119,10 @@ export default function OwnerDashboard() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {businesses.filter(b => b.isActive).map(b => (
               <motion.div 
-                key={b._id} 
+                key={b.id} 
                 whileHover={{ y: -4, shadow: "0 10px 40px -10px rgba(0,0,0,0.1)" }}
                 className="group relative overflow-hidden rounded-3xl border border-white/60 bg-white/60 p-5 backdrop-blur-md transition-all cursor-pointer"
-                onClick={() => navigate(`/owner/businesses/${b._id}`)}
+                onClick={() => navigate(`/owner/businesses/${b.id}`)}
               >
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-150 transition-transform duration-500">
                   <Building2 size={64} className="text-indigo-600" />
@@ -135,7 +135,7 @@ export default function OwnerDashboard() {
                   <p className="text-sm text-slate-500 font-medium">{b.category}</p>
                   <div className="mt-4 flex items-center justify-between border-t border-slate-200/50 pt-4">
                     <span className="status-pill bg-emerald-100 text-emerald-700">Online</span>
-                    <span className="text-xs font-semibold text-slate-400">{b.workingHours?.open}–{b.workingHours?.close}</span>
+                    <span className="text-xs font-semibold text-slate-400">{b.workingHoursOpen}–{b.workingHoursClose}</span>
                   </div>
                 </div>
               </motion.div>

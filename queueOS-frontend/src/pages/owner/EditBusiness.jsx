@@ -25,8 +25,8 @@ export default function EditBusiness() {
           phone: b.phone,
           address: b.address,
           description: b.description,
-          openingTime: b.workingHours?.open,
-          closingTime: b.workingHours?.close,
+          openingTime: b.workingHoursOpen,
+          closingTime: b.workingHoursClose,
         })
       })
       .catch(() => toast.error('Failed to load business'))

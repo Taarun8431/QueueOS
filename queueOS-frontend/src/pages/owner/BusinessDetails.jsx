@@ -38,7 +38,7 @@ export default function BusinessDetails() {
               className="btn-secondary flex items-center gap-2 text-sm">
               <ArrowLeft size={14} /> Back
             </button>
-            <button onClick={() => navigate(`/owner/businesses/${business._id}/edit`)}
+            <button onClick={() => navigate(`/owner/businesses/${business.id}/edit`)}
               className="btn-primary flex items-center gap-2 text-sm">
               <Edit2 size={14} /> Edit
             </button>
@@ -73,9 +73,9 @@ export default function BusinessDetails() {
         </div>
         <div className="card">
           <h3 className="font-semibold text-gray-900 mb-3 text-sm">Working Hours</h3>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Clock size={14} className="text-primary-500" />
-            <span>{business.workingHours?.open} – {business.workingHours?.close}</span>
+          <div className="flex items-center gap-3 text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <Clock size={18} className="text-primary-500" />
+            <span>{business.workingHoursOpen} – {business.workingHoursClose}</span>
           </div>
         </div>
       </div>
@@ -91,7 +91,7 @@ export default function BusinessDetails() {
         ) : (
           <div className="space-y-2">
             {services.map(s => (
-              <div key={s._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl text-sm">
+              <div key={s.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl text-sm">
                 <div>
                   <p className="font-medium text-gray-900">{s.serviceName}</p>
                   <p className="text-xs text-gray-400">{s.estimatedDuration} min · {s.description}</p>

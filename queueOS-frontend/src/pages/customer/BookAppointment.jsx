@@ -41,11 +41,11 @@ export default function BookAppointment() {
         const qServiceId = searchParams.get('serviceId')
         
         if (qBusinessId && qServiceId) {
-          const b = allBusinesses.find(bus => bus.id === qBusinessId || bus._id === qBusinessId)
+          const b = allBusinesses.find(bus => bus.id === qBusinessId || bus.id === qBusinessId)
           if (b) {
             setSelectedBusiness(b)
             const sRes = await api.get(`/services/business/${qBusinessId}`)
-            const s = sRes.data.data.find(srv => srv.id === qServiceId || srv._id === qServiceId)
+            const s = sRes.data.data.find(srv => srv.id === qServiceId || srv.id === qServiceId)
             if (s) {
               setSelectedService(s)
               setLoading(true)
@@ -66,7 +66,7 @@ export default function BookAppointment() {
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
       setLoading(true)
-      api.get(`/staff/availability?staffId=${selectedDoctor.id}&businessId=${selectedBusiness._id}&date=${selectedDate}`)
+      api.get(`/staff/availability?staffId=${selectedDoctor.id}&businessId=${selectedBusiness.id}&date=${selectedDate}`)
         .then(res => {
           setTimeSlots(res.data.data)
         })
@@ -78,7 +78,7 @@ export default function BookAppointment() {
   const selectBusiness = async (b) => {
     setSelectedBusiness(b)
     try {
-      const res = await api.get(`/services/business/${b._id}`)
+      const res = await api.get(`/services/business/${b.id}`)
       setServices(res.data.data)
       setStep(2)
     } catch { toast.error('Failed to load services') }
@@ -88,7 +88,7 @@ export default function BookAppointment() {
     setSelectedService(s)
     setLoading(true)
     try {
-      const res = await api.get(`/staff/role?businessId=${selectedBusiness._id}&roleType=Appointment_Doctor`)
+      const res = await api.get(`/staff/role?businessId=${selectedBusiness.id}&roleType=Appointment_Doctor`)
       setDoctors(res.data.data)
       setStep(3)
     } catch {
@@ -102,8 +102,8 @@ export default function BookAppointment() {
     setSubmitting(true)
     try {
       await api.post('/appointments', {
-        businessId: selectedBusiness._id,
-        serviceId: selectedService._id,
+        businessId: selectedBusiness.id,
+        serviceId: selectedService.id,
         staffId: selectedDoctor.id,
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
@@ -146,7 +146,7 @@ export default function BookAppointment() {
           <motion.div key="s1" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-4">
             <h3 className="text-lg font-bold text-primary-900 mb-2">Select a Hospital</h3>
             {businesses.filter(b => b.isActive).map(b => (
-              <button key={b.id || b._id} onClick={() => selectBusiness(b)}
+              <button key={b.id || b.id} onClick={() => selectBusiness(b)}
                 className="card w-full flex items-center justify-between hover:border-primary-400 cursor-pointer text-left group">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-primary-50 rounded-2xl flex items-center justify-center group-hover:bg-primary-100 transition-colors">
@@ -169,7 +169,7 @@ export default function BookAppointment() {
             <h3 className="text-lg font-bold text-primary-900 mb-4">Select Service Type</h3>
             <div className="space-y-3">
               {services.map(s => (
-                <button key={s.id || s._id} onClick={() => { if(s.isActive) selectService(s) }}
+                <button key={s.id || s.id} onClick={() => { if(s.isActive) selectService(s) }}
                   className={`card w-full flex items-center justify-between text-left group ${s.isActive ? 'hover:border-primary-400 cursor-pointer' : 'opacity-60 cursor-not-allowed bg-slate-50'}`}>
                   <div className="flex items-center gap-4">
                      <div className="w-12 h-12 bg-primary-50 rounded-2xl flex items-center justify-center group-hover:bg-primary-100 transition-colors">

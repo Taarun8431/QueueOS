@@ -91,7 +91,7 @@ export default function QueueStatus() {
             </motion.div>
           ) : (
             myQueues.map(q => (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={q._id} onClick={() => { setTokenId(q._id); localStorage.setItem('activeTokenId', q._id); }} className="card cursor-pointer group hover:border-primary-300 relative overflow-hidden">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={q.id} onClick={() => { setTokenId(q.id); localStorage.setItem('activeTokenId', q.id); }} className="card cursor-pointer group hover:border-primary-300 relative overflow-hidden">
                 <div className="flex justify-between items-start mb-2 relative z-10">
                   <div>
                     <p className="font-bold text-primary-900">{q.businessId?.businessName}</p>

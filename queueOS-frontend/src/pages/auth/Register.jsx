@@ -64,7 +64,7 @@ export default function Register() {
             onClick={() => setRole('owner')}
             className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all ${role === 'owner' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            Business Owner
+            Hospital Admin
           </button>
 
         </div>

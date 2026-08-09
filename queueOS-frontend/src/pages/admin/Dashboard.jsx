@@ -52,7 +52,7 @@ export default function AdminDashboard() {
         </div>
         <div className="space-y-2">
           {businesses.slice(0, 5).map(b => (
-            <div key={b._id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl text-sm">
+            <div key={b.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl text-sm">
               <span className="font-medium text-gray-900">{b.businessName}</span>
               <div className="flex items-center gap-2">
                 <span className="text-gray-400 text-xs">{b.category}</span>

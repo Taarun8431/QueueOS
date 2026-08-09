@@ -21,7 +21,7 @@ export default function QueueBoard() {
       .then(res => {
         const a = res.data.data
         setAssignment(a)
-        const bizId = a.businessId._id || a.businessId
+        const bizId = a.businessId.id || a.businessId
         return api.get(`/services/business/${bizId}`)
       })
       .then(res => {
@@ -33,7 +33,7 @@ export default function QueueBoard() {
 
   useEffect(() => {
     if (!assignment) return
-    const bizId = assignment.businessId._id || assignment.businessId
+    const bizId = assignment.businessId.id || assignment.businessId
     
     api.get(`/queue/current/${bizId}/${serviceFilter}`)
       .then(res => setQueue(res.data.data))
@@ -107,7 +107,7 @@ export default function QueueBoard() {
           >
             <option value="all">All Hospitals</option>
             {services.map(s => (
-              <option key={s._id} value={s._id}>{s.serviceName}</option>
+              <option key={s.id} value={s.id}>{s.serviceName}</option>
             ))}
           </select>
         )}
@@ -143,13 +143,13 @@ export default function QueueBoard() {
               </div>
               <h3 className="text-xl font-black text-slate-900">Hospital Queue</h3>
               <p className="text-sm text-slate-500 mt-1">
-                {services.find(s => s._id === serviceFilter)?.serviceName}
+                {services.find(s => s.id === serviceFilter)?.serviceName}
               </p>
             </div>
             
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex justify-center mb-6">
               <QRCodeCanvas 
-                value={`${window.location.origin}/customer/join-queue?businessId=${assignment.businessId._id || assignment.businessId}&serviceId=${serviceFilter}`}
+                value={`${window.location.origin}/customer/join-queue?businessId=${assignment.businessId.id || assignment.businessId}&serviceId=${serviceFilter}&doctorId=${assignment.staffId}`}
                 size={200}
                 level="H"
                 includeMargin={true}
@@ -166,7 +166,7 @@ export default function QueueBoard() {
 
       <div className="space-y-3">
         {filtered.map(q => (
-          <div key={q._id} className={`card ${q.status === 'called' ? 'border-2 border-secondary-300 bg-secondary-50' : ''}`}>
+          <div key={q.id} className={`card ${q.status === 'called' ? 'border-2 border-secondary-300 bg-secondary-50' : ''}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${q.status === 'called' ? 'bg-secondary-500 text-white' : 'bg-primary-50 text-primary-700 border border-primary-100'}`}>
@@ -174,7 +174,7 @@ export default function QueueBoard() {
                 </div>
                 <div>
                   <p className="font-semibold text-primary-900">Patient #{q.tokenNumber}</p>
-                  <p className="text-xs text-slate-500 font-mono">{q._id}</p>
+                  <p className="text-xs text-slate-500 font-mono">{q.id}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -183,24 +183,24 @@ export default function QueueBoard() {
                 </span>
                 
                 {q.status === 'waiting' && (
-                  <button onClick={() => handleAction('call', q._id)} className="text-xs bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-bold hover:bg-primary-200 transition-colors">
+                  <button onClick={() => handleAction('call', q.id)} className="text-xs bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-bold hover:bg-primary-200 transition-colors">
                     Call
                   </button>
                 )}
 
                 {q.status === 'called' && (
                   <>
-                    <button onClick={() => handleAction('served', q._id)} className="text-xs bg-primary-600 text-white px-3 py-1 rounded-full font-bold hover:bg-primary-700 transition-colors">
+                    <button onClick={() => handleAction('served', q.id)} className="text-xs bg-primary-600 text-white px-3 py-1 rounded-full font-bold hover:bg-primary-700 transition-colors">
                       Completed
                     </button>
-                    <button onClick={() => handleAction('no-show', q._id)} className="text-xs bg-rose-500 text-white px-3 py-1 rounded-full font-bold hover:bg-rose-600 transition-colors">
+                    <button onClick={() => handleAction('no-show', q.id)} className="text-xs bg-rose-500 text-white px-3 py-1 rounded-full font-bold hover:bg-rose-600 transition-colors">
                       No Show
                     </button>
                   </>
                 )}
 
                 {q.status === 'no_show' && (
-                  <button onClick={() => handleAction('recall', q._id)} className="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold hover:bg-amber-200 transition-colors">
+                  <button onClick={() => handleAction('recall', q.id)} className="text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold hover:bg-amber-200 transition-colors">
                     Recall
                   </button>
                 )}

@@ -20,7 +20,7 @@ export default function CreateBusiness() {
         businessName: data.name,
         businessEmail: data.email,
         phone: data.phone,
-        category: data.category,
+        category: 'hospital',
         address: data.address,
         description: data.description,
         workingHours: { open: data.openingTime, close: data.closingTime },
@@ -55,18 +55,6 @@ export default function CreateBusiness() {
                 {...register('name', { required: 'Hospital name is required', minLength: { value: 3, message: 'Min 3 characters' } })} />
             </div>
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-            <div className="relative">
-              <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <select className={`input-field pl-9 ${errors.category ? 'border-red-400' : ''}`}
-                {...register('category', { required: 'Please select a category' })}>
-                <option value="">Select a category</option>
-                {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
-              </select>
-            </div>
-            {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category.message}</p>}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

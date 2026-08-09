@@ -13,7 +13,7 @@ export default function NoShow() {
       .then(res => {
         const a = res.data.data
         if (!a) return []
-        const bizId = a.businessId._id || a.businessId
+        const bizId = a.businessId.id || a.businessId
         return api.get(`/queue/current/${bizId}/all`)
       })
       .then(res => {

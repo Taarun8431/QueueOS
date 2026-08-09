@@ -9,7 +9,7 @@ const { client } = require("../config/redis");
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 20,
+    max: 500,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -24,7 +24,7 @@ const authLimiter = rateLimit({
 
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 2000,
     standardHeaders: true,
     legacyHeaders: false,
     message: {

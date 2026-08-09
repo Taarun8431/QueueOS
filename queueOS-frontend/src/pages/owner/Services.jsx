@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Briefcase, Plus, Edit2, Trash2, Clock, DollarSign, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Briefcase, Plus, Edit2, Trash2, Clock, DollarSign, ToggleLeft, ToggleRight, QrCode, X } from 'lucide-react'
+import { QRCodeCanvas } from 'qrcode.react'
 import { toast } from 'react-toastify'
 import PageHeader from '../../components/PageHeader'
 import api from '../../api'
@@ -10,13 +11,14 @@ export default function Services() {
   const [selectedBusiness, setSelectedBusiness] = useState('')
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [qrService, setQrService] = useState(null)
   const [form, setForm] = useState({ serviceName: '', estimatedDuration: '', price: '', description: '' })
 
   useEffect(() => {
     api.get('/business/my')
       .then(res => {
         setBusinesses(res.data.data)
-        if (res.data.data.length > 0) setSelectedBusiness(res.data.data[0]._id)
+        if (res.data.data.length > 0) setSelectedBusiness(res.data.data[0].id)
       })
       .catch(() => toast.error('Failed to load businesses'))
   }, [])
@@ -32,8 +34,8 @@ export default function Services() {
 
   const toggleAvailability = async (s) => {
     try {
-      await api.put(`/services/${s._id}`, { isActive: !s.isActive })
-      setServices(prev => prev.map(item => item._id === s._id ? { ...item, isActive: !item.isActive } : item))
+      await api.put(`/services/${s.id}`, { isActive: !s.isActive })
+      setServices(prev => prev.map(item => item.id === s.id ? { ...item, isActive: !item.isActive } : item))
     } catch {
       toast.error('Failed to update service')
     }
@@ -42,7 +44,7 @@ export default function Services() {
   const handleDelete = async (id) => {
     try {
       await api.delete(`/services/${id}`)
-      setServices(prev => prev.filter(s => s._id !== id))
+      setServices(prev => prev.filter(s => s.id !== id))
       toast.success('Service removed')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Delete failed')
@@ -85,7 +87,7 @@ export default function Services() {
         <div className="mb-4">
           <label className="block text-xs font-medium text-gray-600 mb-1">Select Business</label>
           <select className="input-field max-w-xs" value={selectedBusiness} onChange={e => setSelectedBusiness(e.target.value)}>
-            {businesses.map(b => <option key={b._id} value={b._id}>{b.businessName}</option>)}
+            {businesses.map(b => <option key={b.id} value={b.id}>{b.businessName}</option>)}
           </select>
         </div>
       )}
@@ -125,7 +127,7 @@ export default function Services() {
         <div className="space-y-3">
           {services.length === 0 && <p className="text-gray-400 text-sm">No services yet. Add one above.</p>}
           {services.map(s => (
-            <div key={s._id} className="card flex items-center justify-between gap-4">
+            <div key={s.id} className="card flex items-center justify-between gap-4">
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 <div className="p-2 bg-primary-50 rounded-lg flex-shrink-0">
                   <Briefcase size={16} className="text-primary-600" />
@@ -140,18 +142,55 @@ export default function Services() {
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => setQrService(s)}
+                  className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Generate QR">
+                  <QrCode size={14} />
+                </button>
                 <button onClick={() => toggleAvailability(s)}
                   className={`text-xs flex items-center gap-1 px-2 py-1 rounded-lg transition-colors ${s.isActive ? 'text-green-700 bg-green-50' : 'text-gray-500 bg-gray-100'}`}>
                   {s.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                   {s.isActive ? 'On' : 'Off'}
                 </button>
-                <button onClick={() => handleDelete(s._id)}
+                <button onClick={() => handleDelete(s.id)}
                   className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                   <Trash2 size={14} />
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {qrService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl relative">
+            <button onClick={() => setQrService(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+              <X size={20} />
+            </button>
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-primary-100 text-primary-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <QrCode size={32} />
+              </div>
+              <h3 className="text-xl font-black text-slate-900">Scan to Join</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                {qrService.serviceName}
+              </p>
+            </div>
+            
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex justify-center mb-6">
+              <QRCodeCanvas 
+                value={`${window.location.origin}/customer/join-queue?businessId=${selectedBusiness}&serviceId=${qrService.id}`}
+                size={200}
+                level="H"
+                includeMargin={true}
+                className="rounded-xl"
+              />
+            </div>
+            
+            <p className="text-xs text-slate-400 font-medium px-4">
+              Display this QR code for customers to instantly register for this service.
+            </p>
+          </div>
         </div>
       )}
     </div>

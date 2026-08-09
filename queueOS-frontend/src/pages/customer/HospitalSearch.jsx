@@ -27,7 +27,7 @@ export default function HospitalSearch() {
     setSelectedBusiness(b)
     setLoadingServices(true)
     try {
-      const res = await api.get(`/services/business/${b._id || b.id}`)
+      const res = await api.get(`/services/business/${b.id || b.id}`)
       setServices(res.data.data)
     } catch {
       toast.error('Failed to load treatments')
@@ -38,8 +38,8 @@ export default function HospitalSearch() {
 
   const handleAction = (type) => {
     if (!selectedBusiness || !selectedService) return
-    const bId = selectedBusiness._id || selectedBusiness.id
-    const sId = selectedService._id || selectedService.id
+    const bId = selectedBusiness.id || selectedBusiness.id
+    const sId = selectedService.id || selectedService.id
     if (type === 'walk-in') {
       navigate(`/customer/join-queue?businessId=${bId}&serviceId=${sId}`)
     } else {
@@ -65,7 +65,7 @@ export default function HospitalSearch() {
             </div>
             <div className="space-y-3">
               {filtered.map(b => (
-                <button key={b.id || b._id} onClick={() => selectBusiness(b)}
+                <button key={b.id || b.id} onClick={() => selectBusiness(b)}
                   className="card w-full flex items-center justify-between hover:border-primary-400 cursor-pointer text-left group">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-primary-50 rounded-2xl flex items-center justify-center transition-colors group-hover:bg-primary-100">
@@ -93,7 +93,7 @@ export default function HospitalSearch() {
             {loadingServices ? <p className="text-slate-400 font-medium text-sm">Loading treatments...</p> : (
               <div className="space-y-3">
                 {services.map(s => (
-                  <button key={s.id || s._id} onClick={() => s.isActive && setSelectedService(s)}
+                  <button key={s.id || s.id} onClick={() => s.isActive && setSelectedService(s)}
                     className={`card w-full flex items-center justify-between text-left group ${s.isActive ? 'hover:border-primary-400 cursor-pointer' : 'opacity-60 cursor-not-allowed bg-slate-50'}`}>
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-primary-50 transition-colors border border-slate-100 group-hover:border-primary-100">

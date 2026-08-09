@@ -19,8 +19,8 @@ export default function ManageBusinesses() {
 
   const toggleStatus = async (b) => {
     try {
-      await api.put(`/business/${b._id}`, { isActive: !b.isActive })
-      setBusinesses(prev => prev.map(item => item._id === b._id ? { ...item, isActive: !item.isActive } : item))
+      await api.put(`/business/${b.id}`, { isActive: !b.isActive })
+      setBusinesses(prev => prev.map(item => item.id === b.id ? { ...item, isActive: !item.isActive } : item))
       toast.success('Business status updated')
     } catch { toast.error('Update failed') }
   }
@@ -28,7 +28,7 @@ export default function ManageBusinesses() {
   const deleteBusiness = async (id) => {
     try {
       await api.delete(`/business/${id}`)
-      setBusinesses(prev => prev.filter(b => b._id !== id))
+      setBusinesses(prev => prev.filter(b => b.id !== id))
       toast.success('Business removed')
     } catch { toast.error('Delete failed') }
   }
@@ -68,7 +68,7 @@ export default function ManageBusinesses() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map(b => (
-                <tr key={b._id} className="hover:bg-gray-50">
+                <tr key={b.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 bg-primary-50 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -88,7 +88,7 @@ export default function ManageBusinesses() {
                       <button onClick={() => toggleStatus(b)} className="p-1.5 rounded-lg text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors">
                         {b.isActive ? <Ban size={14} /> : <CheckCircle size={14} />}
                       </button>
-                      <button onClick={() => deleteBusiness(b._id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <button onClick={() => deleteBusiness(b.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 size={14} />
                       </button>
                     </div>
