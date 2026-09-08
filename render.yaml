@@ -4,7 +4,8 @@ services:
     env: node
     rootDir: queueOS-backend
     buildCommand: npm install && npx prisma generate
-    startCommand: npm start
+    startCommand: npm run render:start
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -22,3 +23,17 @@ services:
         sync: false
       - key: NODE_ENV
         value: production
+
+  - type: static
+    name: queueos-frontend
+    rootDir: queueOS-frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+

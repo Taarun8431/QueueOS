@@ -1,5 +1,6 @@
 const { Worker } = require("bullmq");
 const prisma = require("../config/prisma");
+const { getBullMQConnection } = require("../config/redis");
 
 const notificationWorker = new Worker(
   "notifications",
@@ -18,12 +19,7 @@ const notificationWorker = new Worker(
     console.log(`[Worker] Notification saved for user ${userId} | type=${type} | msg="${message}"`);
   },
   {
-    connection: {
-      host: process.env.REDIS_HOST,
-      port: process.env.REDIS_PORT,
-      username: "default",
-      password: process.env.REDIS_PASSWORD,
-    },
+    connection: getBullMQConnection(),
   }
 );
 
@@ -32,7 +28,11 @@ notificationWorker.on("completed", (job) => {
 });
 
 notificationWorker.on("failed", (job, err) => {
-  console.log(`Notification job failed: ${job.id}`, err.message);
+  console.log(`[Worker] Notification job failed: ${job.id}`, err.message);
+});
+
+notificationWorker.on("error", (err) => {
+  console.error("[Worker] Notification worker error:", err.message);
 });
 
 module.exports = notificationWorker;

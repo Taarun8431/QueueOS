@@ -1,8 +1,12 @@
 import axios from 'axios'
 import { toast } from 'react-toastify'
 
+const rawApiUrl = (import.meta.env.VITE_API_URL || '').trim();
+const baseApiUrl = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
+const apiEndpoint = baseApiUrl ? `${baseApiUrl}/api` : '/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL + '/api',
+  baseURL: apiEndpoint,
   withCredentials: true,
 })
 let accessToken = null
@@ -30,7 +34,7 @@ api.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          import.meta.env.VITE_API_URL + '/api/auth/refresh',
+          `${apiEndpoint}/auth/refresh`,
           {},
           { withCredentials: true }
         )
