@@ -1,15 +1,15 @@
 const { Queue } = require("bullmq");
+const { getBullMQConnection } = require("./redis");
 
 const notificationQueue = new Queue(
     "notifications",
     {
-        connection: {
-            host: process.env.REDIS_HOST,
-            port: process.env.REDIS_PORT,
-            password: process.env.REDIS_PASSWORD,
-            username: "default",
-        },
+        connection: getBullMQConnection(),
     }
 );
 
-module.exports = notificationQueue;
+notificationQueue.on("error", (err) => {
+    console.error("BullMQ NotificationQueue error:", err.message);
+});
+
+module.exports = notificationQueue;

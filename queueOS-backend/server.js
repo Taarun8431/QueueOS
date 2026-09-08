@@ -42,17 +42,25 @@ io.on("connection", (socket) => {
 
 async function startServer() {
   try {
-    await prisma.$connect();
-    logger.info("✔ Connected to PostgreSQL");
-    
-    await connectRedis();
-    logger.info("✔ Connected to Redis");
+    try {
+      await prisma.$connect();
+      logger.info("✔ Connected to PostgreSQL");
+    } catch (dbErr) {
+      logger.error("⚠️ PostgreSQL connection initial check:", dbErr.message);
+    }
 
-    server.listen(PORT, () => {
+    try {
+      await connectRedis();
+      logger.info("✔ Connected to Redis");
+    } catch (redisErr) {
+      logger.error("⚠️ Redis connection initial check:", redisErr.message);
+    }
+
+    server.listen(PORT, "0.0.0.0", () => {
       logger.info(`🚀 SERVER running on port ${PORT}`);
     });
   } catch (error) {
-    logger.error("❌ Server startup error:", error);
+    logger.error("❌ Server startup fatal error:", error);
     process.exit(1);
   }
 }
@@ -71,14 +79,14 @@ const gracefulShutdown = async (signal) => {
       await prisma.$disconnect();
       logger.info("✔ PostgreSQL connection closed.");
       
-      await pubClient.quit();
-      await subClient.quit();
+      if (pubClient.isOpen) await pubClient.quit();
+      if (subClient.isOpen) await subClient.quit();
       logger.info("✔ Redis connections closed.");
       
       logger.info("✔ Server shutdown sequence complete. Exiting.");
       process.exit(0);
     } catch (err) {
-      logger.error("❌ Error during shutdown:", err);
+      logger.error("❌ Error during shutdown:", err.message);
       process.exit(1);
     }
   });
@@ -96,13 +104,14 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
 // Unexpected Node.js Crashes
 process.on("uncaughtException", (err) => {
-  logger.error("❌ UNCAUGHT EXCEPTION! Shutting down...", { stack: err.stack });
+  logger.error("❌ UNCAUGHT EXCEPTION!", { message: err.message, stack: err.stack });
+  if (err.code === "ECONNREFUSED" || err.message?.includes("Redis") || err.message?.includes("connect")) {
+    logger.warn("⚠️ Network/connection exception captured. Continuing execution.");
+    return;
+  }
   process.exit(1);
 });
 
 process.on("unhandledRejection", (err) => {
-  logger.error("❌ UNHANDLED REJECTION! Shutting down...", { stack: err.stack });
-  server.close(() => {
-    process.exit(1);
-  });
+  logger.error("❌ UNHANDLED REJECTION!", { message: err?.message, stack: err?.stack });
 });
