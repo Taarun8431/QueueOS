@@ -1,31 +1,131 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
-
-name: Node.js CI
+name: QueueWISE CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
-  build:
-
+  # -------------------------------------------------------------
+  # 1. FRONTEND VERIFICATION
+  # -------------------------------------------------------------
+  frontend-check:
+    name: Frontend (Build & Asset Verification)
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+    defaults:
+      run:
+        working-directory: queueOS-frontend
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: queueOS-frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Static App (Vite)
+        run: npm run build
+
+  # -------------------------------------------------------------
+  # 2. BACKEND API & INTEGRATION TESTS
+  # -------------------------------------------------------------
+  backend-test:
+    name: Backend (Prisma & Integration Tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: queueOS-backend
+
+    # Ephemeral service containers for realistic integration tests
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: queueos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: queueOS-backend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Sync Test Database Schema
+        run: npx prisma db push --accept-data-loss
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/queueos_test
+
+      - name: Run Backend Integration & Latency Tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          PORT: 5001
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/queueos_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_ci_jwt_secret_key_12345
+
+  # -------------------------------------------------------------
+  # 3. PYTHON ML SERVICE CHECK
+  # -------------------------------------------------------------
+  ml-service-check:
+    name: ML Service (Dependencies & Lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: queueOS-ml
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-python: '3.10'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Sanity Syntax Check
+        run: |
+          python -m py_compile api.py predict.py train_model.py
