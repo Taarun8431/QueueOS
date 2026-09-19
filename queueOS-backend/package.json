@@ -8,7 +8,7 @@
     "postinstall": "prisma generate",
     "build": "prisma generate",
     "db:push": "prisma db push --accept-data-loss",
-    "render:start": "prisma db push --accept-data-loss && node server.js",
+    "render:start": "node scripts/render-start.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "pm2:start": "pm2 start ecosystem.config.js",
